@@ -1,0 +1,5 @@
+let input;
+
+log.write("> ");
+input = log.readln();
+log.writeln(input);

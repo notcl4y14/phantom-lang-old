@@ -2,71 +2,28 @@ let Token = require("./token.js");
 let Error = require("../error.js");
 let Position = require("../position.js");
 
-let lexer_error = function(value) {
+// Token types that are used in lexer to search tokens
+let lexerTokenTypes = require("../../assets/lexer/token-types.js");
+
+// Outputs the lexer error and exits the program
+let lexerError = function(value) {
 	console.error(`lexer error: ${value}`);
 	process.exit();
 }
 
-let lexer_TokenTypes = [
-	{
-		type: "whitespace",
-		find: " \t\r\n",
-		ignore: true
-	},
-	{
-		type: "operator",
-		find: "+-*/%",
-		one_char: true
-	},
-	{
-		type: "number",
-		find: "1234567890",
-		one_char: false,
-		lexerize: function(lexer) {
-			let numStr = "";
-			let float = false;
-
-			while (lexer.notEOF() && ("1234567890.").includes(lexer.at())) {
-
-				if (lexer.at() == ".") {
-					if (float) break;
-					numStr += ".";
-					float = true;
-
-				} else {
-					numStr += lexer.at();
-				}
-
-				lexer.advance();
-			}
-
-			lexer.advance(-1);
-
-			return new Token(this.type, Number(numStr));
-		}
-	}
-]
-
-let lexer_Result = class {
+let lexerResult = class {
 	constructor() {
-		this.token = null;
+		this.list = null;
 		this.error = null;
 	}
 
-	register(res) {
-		if (res.error)
-			return res;
-
-		return res.token;
-	}
-
-	success(token) {
-		this.token = token;
+	success(list) {
+		this.list = list;
 		return this;
 	}
 
-	failure(error) {
-		this.error = error;
+	failure(filename, position, details) {
+		this.error = new Error(filename, position, details);
 		return this;
 	}
 }
@@ -75,76 +32,92 @@ let Lexer = class {
 	constructor(filename, code) {
 		this.filename = filename;
 		this.code = code;
-		this.pos = new Position(-1, 0, -1);
+		this.position = new Position(-1, 0, -1);
 
 		this.advance();
 	}
 
+	// Advances to the next character
 	advance(delta = 1) {
-		this.pos.advance(this.at(), delta);
+		this.position.advance(this.at(), delta);
 	}
 
-	at() {
-		return this.code[this.pos.index];
+	// Returns the current character
+	at(range = 1) {
+		return this.code.substr(this.position.index, range);
 	}
 
+	// Checks if the lexer is not at the end of file
 	notEOF() {
-		return this.pos.index < this.code.length;
+		return this.position.index < this.code.length;
 	}
 
+	// Makes tokens
 	lexerize() {
-		let res = new lexer_Result();
-		let tokens = [];
+		let res = new lexerResult();
+		let listTokens = [];
 
 		while (this.notEOF()) {
 
 			// Initializing a variable for checking errors
-			let tokenFound = false;
+			let isTokenFound = false;
 
-			for (let i = 0; i < lexer_TokenTypes.length; i += 1) {
+			// Iterating through the lexer token types
+			for (let i = 0; i < lexerTokenTypes.length; i += 1) {
+
 				// Instance
-				let tokenType = lexer_TokenTypes[i];
+				let tokenType = lexerTokenTypes[i];
 
-				if (tokenType.find.includes(this.at())) {
+				// The "find" property length
+				let length = 1;
+
+				if (tokenType.flags.includes("multi-char"))
+					length = tokenType.find.length;
+
+				// Checking if the `find` property matches the current character
+				if (tokenType.find.includes(this.at(length))) {
 
 					// Ignorable token
-					if (tokenType.ignore) {
-						tokenFound = true;
+					if (tokenType.flags.includes("ignore")) {
+						isTokenFound = true;
 						break;
 
 					// One-character token
-					} else if (tokenType.one_char) {
+					} else if (tokenType.flags.includes("one-char")) {
 						// Pushing
-						tokens.push( new Token(tokenType.type, this.at()) );
-						tokenFound = true;
+						listTokens.push( new Token(tokenType.type, this.at())
+							.setPos(this.position.clone()) );
+						isTokenFound = true;
 						break;
 
 					// Multi-character token
 					} else if (tokenType.lexerize) {
 						let token = tokenType.lexerize(this);
-						if (!token) lexer_error(`Token Type's lexerize() method should return a Token`);
+						if (!token) lexerError(`Token Type's lexerize() method should return a Token`);
 
 						// Pushing
-						tokens.push(token);
-						tokenFound = true;
+						listTokens.push(token);
+						isTokenFound = true;
 						break;
 					}
 
-					lexer_error(`Token type '${tokenType.type}' should have the lexerize() method unless 'one_char' is set to true`);
+					// "No lexerize() method" lexer error
+					lexerError(`Token type '${tokenType.type}' should have the lexerize() method unless there is a 'one-char' flag`);
 				}
 			}
 
 			// "Undefined Token" error
-			if (!tokenFound)
-				return res.failure(new Error(this.filename, this.pos.clone(), `Undefined token '${this.at()}'`));
+			if (!isTokenFound)
+				return res.failure(this.filename, this.position.clone(), `Undefined character '${this.at()}'`);
 
 			// Advancing to the next character
 			this.advance();
 		}
 
-		tokens.push( new Token("EOF") );
+		listTokens.push( new Token("EOF")
+			.setPos(this.position.clone()) );
 
-		return res.success(tokens);
+		return res.success(listTokens);
 	}
 }
 

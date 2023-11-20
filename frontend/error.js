@@ -7,8 +7,8 @@ let Error = class {
 
 	asString() {
 		let	filename	= this.filename,
-			line		= this.pos.line,
-			column		= this.pos.column,
+			line		= this.pos.line + 1,
+			column		= this.pos.column + 1,
 			details		= this.details;
 
 		return `${filename}:${line}:${column}: ${details}`;
