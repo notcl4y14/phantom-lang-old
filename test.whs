@@ -1,1 +1,2 @@
-let x = function() {};
+(10 * 5) / -4
+!true

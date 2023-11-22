@@ -13,16 +13,15 @@ let Token = class {
 	// Which gives the ability to create a token with the set positions
 	setPos(leftPos, rightPos) {
 		this.leftPos = leftPos;
-		this.rightPos = (rightPos || leftPos.clone());
+		this.rightPos = (rightPos || leftPos.clone().advance());
 
 		return this;
 	}
 
 	// Checks if the token type and value match the given ones
 	matches(type, value) {
-		return
-			(this.type == type
-			&& this.value == value);
+		return this.type == type
+			&& this.value == value;
 	}
 
 	// Returns the Token as string

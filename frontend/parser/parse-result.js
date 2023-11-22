@@ -1,3 +1,5 @@
+let Error = require("../error.js");
+
 let ParseResult = class {
 	constructor() {
 		this.node = null;
@@ -5,12 +7,8 @@ let ParseResult = class {
 	}
 
 	register(res) {
-		if (res instanceof ParseResult) {
-			if (res.error) return res;
-			return res.node;
-		}
-
-		return res;
+		if (res.error) this.error = res.error;
+		return res.node;
 	}
 
 	success(node) {

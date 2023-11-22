@@ -1,6 +1,11 @@
-let Error = require("../error.js");
 let ParseResult = require("../../frontend/parser/parse-result.js");
 let parserNodeTypes = require("../../assets/parser/node-types.js");
+
+// Outputs the parser error and exits the program
+let parserError = function(value) {
+	console.error(`parser error: ${value}`);
+	process.exit();
+}
 
 let Parser = class {
 	constructor(filename, listTokens) {
@@ -19,8 +24,8 @@ let Parser = class {
 	}
 
 	// Returns the current token
-	at() {
-		return this.listTokens[this.position];
+	at(delta = 0) {
+		return this.listTokens[this.position + delta];
 	}
 
 	// Checks if the parser has not reached the end of file
@@ -35,7 +40,7 @@ let Parser = class {
 			body: []
 		}
 
-		let startNodeType = parserNodeTypes.nodes[parserNodeTypes.start];
+		let startNodeType = this.getNodeType(parserNodeTypes.start);
 		let result = new ParseResult();
 
 		while (this.notEOF()) {
@@ -50,17 +55,30 @@ let Parser = class {
 		return result.success(program);
 	}
 
-	// Puts the result in a ParseResult and checks for error
-	// Also moves to the next parser node type if it didn't get a returned value
-	parseNodeType(nodeType) {
-		let res = new ParseResult();
-		let result = res.register(nodeType.parse(this));
+	// Parses a specific node type
+	parseNode(nodeType) {
+		let result = this.getNodeType(nodeType);
 
 		if (!result)
-			result = res.register(
-				parserNodeTypes.nodes[nodeType.default]
-					.parse(this));
+			parserError(`Undefined type '${nodeType}'`);
 
+		return result.parse(this);
+	}
+
+	getNodeType(nodeType) {
+		for (let i = 0; i < parserNodeTypes.nodes.length; i += 1) {
+			if (parserNodeTypes.nodes[i].name == nodeType)
+				return parserNodeTypes.nodes[i];
+		}
+
+		return;
+	}
+
+	// Parses the node type and puts the result in a ParseResult and checks for the error
+	parseNodeType(nodeType) {
+		let res = new ParseResult();
+
+		let result = res.register(nodeType.parse(this));
 		if (res.error) return res;
 
 		return result;
