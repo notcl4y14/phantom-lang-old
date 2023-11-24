@@ -1,10 +1,12 @@
 let utils = require("util");
 let Lexer = require("./frontend/lexer/lexer.js");
 let Parser = require("./frontend/parser/parser.js");
+let Interpreter = require("./frontend/interpreter/interpreter.js");
 
 let run = function(filename, code, flags) {
 	let showLexer = flags.includes("--lexer");
 	let showParser = flags.includes("--parser");
+	let showInterp = flags.includes("--rtvalue");
 	// ---------------------------------------------
 
 	// Lexer
@@ -35,6 +37,20 @@ let run = function(filename, code, flags) {
 	// Output AST
 	if (showParser)
 		console.log(utils.inspect(ast.node, {showHidden: false, depth: null, colors: true}));
+
+	// Interpreter
+	let interp = new Interpreter(filename);
+	let result = interp.evalPrimary(ast.node);
+
+	// Checking interpreter error
+	if (result.error) {
+		console.log(result.error.asString());
+		return;
+	}
+
+	// Output last evaluated value
+	if (showInterp)
+		console.log(result.value);
 }
 
 module.exports = run;

@@ -6,6 +6,19 @@ let parserError = function(value) {
 	process.exit();
 }
 
+let newNode = function(obj) {
+	let node = obj;
+
+	obj.setPos = function(left, right) {
+		this.leftPos = left;
+		this.rightPos = right;
+
+		return this;
+	}
+
+	return node;
+}
+
 let Parser = class {
 	constructor(filename, listTokens) {
 		this.filename = filename;
@@ -37,7 +50,7 @@ let Parser = class {
 		let program = {
 			type: "program",
 			body: []
-		}
+		};
 
 		let result = new ParseResult();
 
@@ -79,10 +92,14 @@ let Parser = class {
 			let right = res.register(this.parseMultExpr());
 			if (res.error) return res;
 
-			return res.success({
-				type: "binary-expr",
-				left, operator, right
-			});
+			let leftPos = left.leftPos;
+			let rightPos = right.rightPos;
+
+			return res.success(
+				newNode({
+					type: "binary-expr",
+					left, operator, right
+				}).setPos(leftPos, rightPos));
 		}
 
 		return res.success(left);
@@ -98,10 +115,14 @@ let Parser = class {
 			let right = res.register(this.parsePrimaryExpr());
 			if (res.error) return res;
 
-			return res.success({
-				type: "binary-expr",
-				left, operator, right
-			});
+			let leftPos = left.leftPos;
+			let rightPos = right.rightPos;
+
+			return res.success(
+				newNode({
+					type: "binary-expr",
+					left, operator, right
+				}).setPos(leftPos, rightPos));
 		}
 
 		return res.success(left);
@@ -111,35 +132,42 @@ let Parser = class {
 		let res = new ParseResult();
 		let token = this.advance();
 
+		let leftPos = token.leftPos;
+		let rightPos = token.rightPos;
+
 		// numeric-literal
 		if (token.type == "number") {
-			return res.success({
-				type: "numeric-literal",
-				value: token.value
-			});
+			return res.success(
+				newNode({
+					type: "numeric-literal",
+					value: token.value
+				}).setPos(leftPos, rightPos));
 
 		// string-literal
 		} else if (token.type == "string") {
-			return res.success({
-				type: "string-literal",
-				value: token.value
-			});
+			return res.success(
+				newNode({
+					type: "string-literal",
+					value: token.value
+				}).setPos(leftPos, rightPos));
 		
 		// identifier | literal
 		} else if (token.type == "identifier") {
 
 			// literal
 			if (["null", "undefined", "true", "false"].includes(token.value))
-				return res.success({
-					type: "literal",
-					value: token.value
-				});
+				return res.success(
+					newNode({
+						type: "literal",
+						value: token.value
+					}).setPos(leftPos, rightPos));
 
 			// identifier
-			return res.success({
-				type: "identifier",
-				value: token.value
-			});
+			return res.success(
+				newNode({
+					type: "identifier",
+					value: token.value
+				}).setPos(leftPos, rightPos));
 		
 		// parenthesised expression
 		} else if (token.matches("parenthesis", "(")) {
@@ -160,11 +188,14 @@ let Parser = class {
 			let argument = res.register(this.parseExpr());
 			if (res.error) return res;
 
-			return res.success({
-				type: "unary-expr",
-				operator: operator,
-				argument: argument
-			});
+			let rightPos = argument.rightPos;
+
+			return res.success(
+				newNode({
+					type: "unary-expr",
+					operator: operator,
+					argument: argument
+				}).setPos(leftPos, rightPos));
 		}
 
 		// Setting the value variable to the token value.
