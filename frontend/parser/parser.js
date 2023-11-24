@@ -1,5 +1,4 @@
 let ParseResult = require("../../frontend/parser/parse-result.js");
-let parserNodeTypes = require("../../assets/parser/node-types.js");
 
 // Outputs the parser error and exits the program
 let parserError = function(value) {
@@ -40,13 +39,12 @@ let Parser = class {
 			body: []
 		}
 
-		let startNodeType = this.getNodeType(parserNodeTypes.start);
 		let result = new ParseResult();
 
 		while (this.notEOF()) {
 			if (!this.notEOF()) break;
 
-			let res = this.parseNodeType(startNodeType);
+			let res = result.register(this.parseStmt());
 			if (res.error) return res;
 
 			program.body.push(res);
@@ -54,34 +52,127 @@ let Parser = class {
 
 		return result.success(program);
 	}
-
-	// Parses a specific node type
-	parseNode(nodeType) {
-		let result = this.getNodeType(nodeType);
-
-		if (!result)
-			parserError(`Undefined type '${nodeType}'`);
-
-		return result.parse(this);
+	
+	// ----------------------------------------------------------
+	// Statements
+	// ----------------------------------------------------------
+	parseStmt() {
+		let stmt = this.parseExpr();
+		return stmt;
 	}
 
-	getNodeType(nodeType) {
-		for (let i = 0; i < parserNodeTypes.nodes.length; i += 1) {
-			if (parserNodeTypes.nodes[i].name == nodeType)
-				return parserNodeTypes.nodes[i];
-		}
-
-		return;
+	// ----------------------------------------------------------
+	// Expressions
+	// ----------------------------------------------------------
+	parseExpr() {
+		let expr = this.parseAddExpr();
+		return expr;
 	}
 
-	// Parses the node type and puts the result in a ParseResult and checks for the error
-	parseNodeType(nodeType) {
+	parseAddExpr() {
 		let res = new ParseResult();
-
-		let result = res.register(nodeType.parse(this));
+		let left = res.register(this.parseMultExpr());
 		if (res.error) return res;
 
-		return result;
+		while (this.notEOF() && ["+", "-"].includes(this.at().value)) {
+			let operator = this.advance();
+			let right = res.register(this.parseMultExpr());
+			if (res.error) return res;
+
+			return res.success({
+				type: "binary-expr",
+				left, operator, right
+			});
+		}
+
+		return res.success(left);
+	}
+
+	parseMultExpr() {
+		let res = new ParseResult();
+		let left = res.register(this.parsePrimaryExpr());
+		if (res.error) return res;
+
+		while (this.notEOF() && ["*", "/", "%"].includes(this.at().value)) {
+			let operator = this.advance();
+			let right = res.register(this.parsePrimaryExpr());
+			if (res.error) return res;
+
+			return res.success({
+				type: "binary-expr",
+				left, operator, right
+			});
+		}
+
+		return res.success(left);
+	}
+
+	parsePrimaryExpr() {
+		let res = new ParseResult();
+		let token = this.advance();
+
+		// numeric-literal
+		if (token.type == "number") {
+			return res.success({
+				type: "numeric-literal",
+				value: token.value
+			});
+
+		// string-literal
+		} else if (token.type == "string") {
+			return res.success({
+				type: "string-literal",
+				value: token.value
+			});
+		
+		// identifier | literal
+		} else if (token.type == "identifier") {
+
+			// literal
+			if (["null", "undefined", "true", "false"].includes(token.value))
+				return res.success({
+					type: "literal",
+					value: token.value
+				});
+
+			// identifier
+			return res.success({
+				type: "identifier",
+				value: token.value
+			});
+		
+		// parenthesised expression
+		} else if (token.matches("parenthesis", "(")) {
+			// this.advance();
+			let expr = res.register(this.parseStmt());
+			if (res.error) return res;
+
+			if (!this.at().matches("parenthesis", ")"))
+				return res.failure(this.filename, this.at().rightPos, "Expected ')'");
+
+			this.advance();
+
+			return res.success(expr);
+
+		// unary expression
+		} else if (token.matches("operator", "-") || token.matches("symbol", "!")) {
+			let operator = token.value;
+			let argument = res.register(this.parseExpr());
+			if (res.error) return res;
+
+			return res.success({
+				type: "unary-expr",
+				operator: operator,
+				argument: argument
+			});
+		}
+
+		// Setting the value variable to the token value.
+		// Uses token type instead if value is null.
+		let value = token.value ? token.value : token.type;
+
+		// Unexpected token
+		return res.failure(this.filename, token.rightPos, `Unexpected token '${value}'`);
 	}
 }
 
