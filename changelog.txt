@@ -1,0 +1,51 @@
+// -----------------------------------------------------------------
+// changelog.txt
+// whisp-lang by notcl4y14 (klei)
+// https://github.com/notcl4y14/whisp-lang
+// -----------------------------------------------------------------
+
+// -----------------------------------------------------------------
+// UNDER DEVELOPMENT VERSIONS
+// -----------------------------------------------------------------
+
+// 25/11/2023
+- Created changelog.txt
+- Removed "assets" folder
+----------
+- Added the NOT (!) and comparisonal operators
+- Removed the Lexer Token Types system
+
+// 24/11/2023
+- Added leftPos and rightPos to nodes' properties
+- Created interpreter.js
+- Added "--rtvalue" argument
+	+ Outputs the last evaluted by interpreter value
+----------
+- Removed the Parser Node Types system
+
+// 22/11/2023
+- Added binary and unary expressions
+
+// 20/11/2023
+- Added more token types
+- Added leftPos and rightPos to tokens' properties
+- Added "test" folder
+- Created parser.js
+- Added the ability to read and run files
+- Added arguments
+	+ "--lexer" 
+		* Outputs the list of tokens
+	+ "--parser"
+		* Outputs the AST
+
+// 18/11/2023
+- Created position.js and error.js
+- Created lexer token type checking system
+----------
+- Created run.js
+----------
+- Created token.js and lexer.js
+----------
+- Created main.js and package.json
+----------
+- Initial release
