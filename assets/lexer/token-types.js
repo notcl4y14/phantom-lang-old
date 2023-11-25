@@ -62,6 +62,27 @@ let lexerTokenTypes = [
 	// ----------------------------------------------------------
 	{
 		type: "operator",
+		find: ["<=", ">=", "==", "!="],
+		flags: ["multi-char"],
+
+		lexerize: function(lexer) {
+			let leftPos = lexer.position.clone();
+			let str = lexer.at(2);
+			console.log(str);
+			lexer.advance(2);
+			let rightPos = lexer.position.clone();
+
+			return new Token("operator", str)
+				.setPos(leftPos, rightPos);
+		}
+	},
+	{
+		type: "operator",
+		find: "<>=",
+		flags: ["one-char"]
+	},
+	{
+		type: "operator",
 		find: "+-*/%",
 		flags: ["one-char"]
 	},
@@ -82,7 +103,7 @@ let lexerTokenTypes = [
 	},
 	{
 		type: "symbol",
-		find: "!&|<>=.,:;",
+		find: "!&|.,:;",
 		flags: ["one-char"]
 	},
 

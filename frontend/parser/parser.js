@@ -1,11 +1,5 @@
 let ParseResult = require("../../frontend/parser/parse-result.js");
 
-// Outputs the parser error and exits the program
-let parserError = function(value) {
-	console.error(`parser error: ${value}`);
-	process.exit();
-}
-
 let newNode = function(obj) {
 	let node = obj;
 
@@ -58,7 +52,7 @@ let Parser = class {
 			if (!this.notEOF()) break;
 
 			let res = result.register(this.parseStmt());
-			if (res.error) return res;
+			if (result.error) return result;
 
 			program.body.push(res);
 		}
@@ -78,8 +72,31 @@ let Parser = class {
 	// Expressions
 	// ----------------------------------------------------------
 	parseExpr() {
-		let expr = this.parseAddExpr();
+		let expr = this.parseCompExpr();
 		return expr;
+	}
+
+	parseCompExpr() {
+		let res = new ParseResult();
+		let left = res.register(this.parseAddExpr());
+		if (res.error) return res;
+
+		while (this.notEOF() && this.at().type == "operator" && ["<", ">", "<=", ">=", "==", "!="].includes(this.at().value)) {
+			let operator = this.advance().value;
+			let right = res.register(this.parseAddExpr());
+			if (res.error) return res;
+
+			let leftPos = left.leftPos;
+			let rightPos = right.rightPos;
+
+			return res.success(
+				newNode({
+					type: "binary-expr",
+					left, operator, right
+				}).setPos(leftPos, rightPos));
+		}
+
+		return res.success(left);
 	}
 
 	parseAddExpr() {
@@ -87,8 +104,8 @@ let Parser = class {
 		let left = res.register(this.parseMultExpr());
 		if (res.error) return res;
 
-		while (this.notEOF() && ["+", "-"].includes(this.at().value)) {
-			let operator = this.advance();
+		while (this.notEOF() && this.at().type == "operator" && ["+", "-"].includes(this.at().value)) {
+			let operator = this.advance().value;
 			let right = res.register(this.parseMultExpr());
 			if (res.error) return res;
 
@@ -110,8 +127,8 @@ let Parser = class {
 		let left = res.register(this.parsePrimaryExpr());
 		if (res.error) return res;
 
-		while (this.notEOF() && ["*", "/", "%"].includes(this.at().value)) {
-			let operator = this.advance();
+		while (this.notEOF() && this.at().type == "operator" && ["*", "/", "%"].includes(this.at().value)) {
+			let operator = this.advance().value;
 			let right = res.register(this.parsePrimaryExpr());
 			if (res.error) return res;
 

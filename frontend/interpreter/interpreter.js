@@ -27,6 +27,15 @@ let Interpreter = class {
 		this.filename = filename;
 	}
 
+	toBoolean(value) {
+		if (!value) return;
+
+		return (
+				!(value.type == "undefined"
+				|| value.type == "null"
+				|| (value.type === "boolean" && value.value == false)));
+	}
+
 	evalPrimary(node) {
 		let res = new RuntimeResult();
 
@@ -56,6 +65,9 @@ let Interpreter = class {
 
 		} else if (node.type == "binary-expr") {
 			return this.evalBinaryExpr(node);
+
+		} else if (node.type == "unary-expr") {
+			return this.evalUnaryExpr(node);
 		}
 
 		return res.failure(this.filename, node.rightPos, `Node Type ${node.type} has not been setup for interpretation`);
@@ -85,9 +97,10 @@ let Interpreter = class {
 		if (res.error) return res;
 
 		let operator = node.operator;
-		let result = 0;
+		let result = null;
 
-		switch (operator.value) {
+		switch (operator) {
+			// Arithmetic operators
 			case "+":
 				result = left.value + right.value;
 				break;
@@ -103,7 +116,60 @@ let Interpreter = class {
 			case "%":
 				result = left.value % right.value;
 				break;
+
+			// Comparisonal operators
+			case "<":
+				result = left.value < right.value;
+				break;
+			case ">":
+				result = left.value > right.value;
+				break;
+			case "<=":
+				result = left.value <= right.value;
+				break;
+			case ">=":
+				result = left.value >= right.value;
+				break;
+			case "==":
+				result = left.value == right.value && left.type == right.type;
+				break;
+			case "!=":
+				result = left.value != right.value;
+				break;
 		}
+
+		if (result == null)
+			return res.failure(this.filename, node.leftPos, `Undefined binary expression operator '${operator}'`);
+
+		if (result === true || result === false)
+			return res.success({type: "boolean", value: result});
+
+		return res.success({type: "number", value: result});
+	}
+
+	evalUnaryExpr(node) {
+		let res = new RuntimeResult();
+
+		let argument = res.register(this.evalPrimary(node.argument));
+		if (res.error) return res;
+
+		let operator = node.operator;
+		let result = null;
+
+		switch (operator) {
+			case "-":
+				result = argument.value * -1;
+				break;
+			case "!":
+				result = !(this.toBoolean(argument.value));
+				break;
+		}
+
+		if (result == null)
+			return res.failure(this.filename, node.leftPos, `Undefined unary expression operator '${operator}'`);
+
+		if (result === true || result === false)
+			return res.success({type: "boolean", value: result});
 
 		return res.success({type: "number", value: result});
 	}
