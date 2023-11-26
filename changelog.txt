@@ -1,13 +1,24 @@
 // -----------------------------------------------------------------
 // changelog.txt
-// whisp-lang by notcl4y14 (klei)
-// https://github.com/notcl4y14/whisp-lang
+// phantom-lang by notcl4y14 (klei)
+// https://github.com/notcl4y14/phantom-lang
 // -----------------------------------------------------------------
 
 // -----------------------------------------------------------------
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// NOTE: The changes here and in the future are sorted
+// 26/11/2023
+- Renamed the language from "Whisp" to "Phantom"
+- Renamed the "test" folder to "tests"
+- Added "--show-process" argument
+	+ Outputs which process stage (lexerizing, parsing etc.) the language is currently at
+- Added Interpreter.toNumber() function
+- Added logical expressions
+- The node's setPos() function now removes itself after using it
+
+// NOTE: The changes here are sorted by time
 // 25/11/2023
 - Created changelog.txt
 - Removed "assets" folder

@@ -31,9 +31,25 @@ let Interpreter = class {
 		if (!value) return;
 
 		return (
-				!(value.type == "undefined"
-				|| value.type == "null"
-				|| (value.type === "boolean" && value.value == false)));
+				!(value.type === "undefined"
+				|| value.type === "null"
+				|| (value.type === "boolean" && value.value === false)));
+	}
+
+	toNumber(value) {
+		if (!value) return;
+
+		if (value.type == "number") {
+			return value.value;
+
+		} else if (
+			["undefined", "null"].includes(value.type)
+			|| (value.type === "boolean" && value.value === false))
+		{
+			return 0;
+		}
+
+		return 1;
 	}
 
 	evalPrimary(node) {
@@ -63,6 +79,9 @@ let Interpreter = class {
 		} else if (node.type == "program") {
 			return this.evalProgram(node);
 
+		} else if (node.type == "logical-expr") {
+			return this.evalLogicalExpr(node);
+
 		} else if (node.type == "binary-expr") {
 			return this.evalBinaryExpr(node);
 
@@ -87,6 +106,32 @@ let Interpreter = class {
 		return res.success(lastEvalValue);
 	}
 
+	evalLogicalExpr(node) {
+		let res = new RuntimeResult();
+
+		let left = res.register(this.evalPrimary(node.left));
+		if (res.error) return res;
+
+		let right = res.register(this.evalPrimary(node.right));
+		if (res.error) return res;
+
+		let operator = node.operator;
+		let result = null;
+
+		switch (operator) {
+			case "&&":
+				result = this.toBoolean(left) && this.toBoolean(right);
+				break;
+			case "||":
+				result = this.toBoolean(left) || this.toBoolean(right);
+				break;
+			default:
+				return res.failure(this.filename, node.leftPos, `Undefined logical expression operator '${operator}'`);
+		}
+
+		return res.success({type: "boolean", value: result});
+	}
+
 	evalBinaryExpr(node) {
 		let res = new RuntimeResult();
 
@@ -102,19 +147,19 @@ let Interpreter = class {
 		switch (operator) {
 			// Arithmetic operators
 			case "+":
-				result = left.value + right.value;
+				result = this.toNumber(left) + this.toNumber(right);
 				break;
 			case "-":
-				result = left.value - right.value;
+				result = this.toNumber(left) - this.toNumber(right);
 				break;
 			case "*":
-				result = left.value * right.value;
+				result = this.toNumber(left) * this.toNumber(right);
 				break;
 			case "/":
-				result = left.value / right.value;
+				result = this.toNumber(left) / this.toNumber(right);
 				break;
 			case "%":
-				result = left.value % right.value;
+				result = this.toNumber(left) % this.toNumber(right);
 				break;
 
 			// Comparisonal operators

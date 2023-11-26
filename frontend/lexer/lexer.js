@@ -2,6 +2,8 @@ let Token = require("./token.js");
 let Error = require("../error.js");
 let Position = require("../position.js");
 
+let lexerKeywords = ["let", "var", "if", "else", "for", "while", "function"];
+
 let lexerResult = class {
 	constructor() {
 		this.list = null;
@@ -59,7 +61,7 @@ let Lexer = class {
 			} else if (this.at(2) == "/*") {
 				listTokens.push( this.lexerizeMultilineComment() );
 
-			} else if (["<=", ">=", "==", "!="].includes(this.at(2))) {
+			} else if (["<=", ">=", "==", "!=", "&&", "||"].includes(this.at(2))) {
 				listTokens.push( new Token("operator", this.at(2))
 					.setPos(this.position.clone()));
 
@@ -186,7 +188,7 @@ let Lexer = class {
 		let leftPos = this.position.clone();
 		let identStr = "";
 
-		while (this.notEOF() && (this.find + "1234567890").includes(this.at())) {
+		while (this.notEOF() && ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_" + "1234567890").includes(this.at())) {
 			identStr += this.at();
 			this.advance();
 		}

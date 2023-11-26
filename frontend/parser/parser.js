@@ -7,6 +7,9 @@ let newNode = function(obj) {
 		this.leftPos = left;
 		this.rightPos = right;
 
+		// Removing the function from the object
+		delete obj.setPos;
+
 		return this;
 	}
 
@@ -72,8 +75,31 @@ let Parser = class {
 	// Expressions
 	// ----------------------------------------------------------
 	parseExpr() {
-		let expr = this.parseCompExpr();
+		let expr = this.parseLogicExpr();
 		return expr;
+	}
+
+	parseLogicExpr() {
+		let res = new ParseResult();
+		let left = res.register(this.parseCompExpr());
+		if (res.error) return res;
+
+		while (this.notEOF() && this.at().type == "operator" && ["&&", "||"].includes(this.at().value)) {
+			let operator = this.advance().value;
+			let right = res.register(this.parseCompExpr());
+			if (res.error) return res;
+
+			let leftPos = left.leftPos;
+			let rightPos = right.rightPos;
+
+			return res.success(
+				newNode({
+					type: "logical-expr",
+					left, operator, right
+				}).setPos(leftPos, rightPos));
+		}
+
+		return res.success(left);
 	}
 
 	parseCompExpr() {

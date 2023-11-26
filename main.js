@@ -7,7 +7,7 @@ let initError = function(value) {
 	return;
 }
 
-let validArguments = ["--lexer", "--parser", "--rtvalue"];
+let validArguments = ["--show-process", "--lexer", "--parser", "--rtvalue"];
 
 let main = function() {
 	let args = process.argv;
