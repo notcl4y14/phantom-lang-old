@@ -8,6 +8,21 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 27/11/2023
+- Created a variable table
+- Added the ability to use semicolons
+- Added a check for the parser to add a node to the AST tree if it has a value
+- Added "--var-table" argument
+	+ Outputs the variable table
+- Added variable declaration
+- Added delta to Parser.advance()
+- Added variable assignment
+- Added comments
+- Added more tests
+	+ varDeclaration.pht
+	+ comments.pht
+	+ reference.pht
+
 // NOTE: The changes here and in the future are sorted
 // 26/11/2023
 - Renamed the language from "Whisp" to "Phantom"

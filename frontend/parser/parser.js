@@ -26,9 +26,9 @@ let Parser = class {
 	}
 
 	// Advances to the next token
-	advance() {
+	advance(delta = 1) {
 		let token = this.at();
-		this.position += 1;
+		this.position += delta;
 		return token;
 	}
 
@@ -46,6 +46,7 @@ let Parser = class {
 	parse() {
 		let program = {
 			type: "program",
+			comments: [],
 			body: []
 		};
 
@@ -57,27 +58,105 @@ let Parser = class {
 			let res = result.register(this.parseStmt());
 			if (result.error) return result;
 
-			program.body.push(res);
+			if (res) {
+				if (res.type == "comment-expr") {
+					program.comments.push(res);
+					continue;
+				}
+
+				program.body.push(res);
+			}
 		}
 
 		return result.success(program);
 	}
 	
-	// ----------------------------------------------------------
+	// ---------------------------------------------------------------------------
 	// Statements
-	// ----------------------------------------------------------
+	// ---------------------------------------------------------------------------
 	parseStmt() {
+		if (this.at().type == "keyword" && ["let", "var"].includes(this.at().value)) {
+			return this.parseVariableDeclaration();
+		}
+
 		let stmt = this.parseExpr();
 		return stmt;
 	}
 
-	// ----------------------------------------------------------
+	// ---------------------------------------------------------------------------
+
+	parseVariableDeclaration() {
+		let res = new ParseResult();
+
+		let keyword = this.advance();
+		let leftPos = keyword.leftPos;
+
+		// primary-expr is used instead to prevent parser from detecting
+		// a variable-assignment node "(let) x = 5"
+		let name = res.register(this.parsePrimaryExpr());
+		if (res.error) return res;
+
+		if (name.type !== "identifier")
+			return res.failure(this.filename, name.rightPos, "Expected an identifier");
+
+		// (let | var) (identifier);
+		if (!this.at().matches("operator", "=")) {
+			let rightPos = name.rightPos;
+
+			return res.success(newNode({
+				type: "var-declaration",
+				name: name,
+				value: {type: "literal", value: "null"}
+			}).setPos(leftPos, rightPos));
+		}
+
+		// (let | var) (identifier) = (value);
+		this.advance();
+
+		let value = res.register(this.parseExpr());
+		if (res.error) return res;
+
+		let rightPos = value.rightPos;
+
+		return res.success(
+			newNode({
+				type: "var-declaration",
+				name: name,
+				value: value
+			}).setPos(leftPos, rightPos));
+	}
+
+	// ---------------------------------------------------------------------------
 	// Expressions
-	// ----------------------------------------------------------
+	// ---------------------------------------------------------------------------
 	parseExpr() {
+		// var-assignment
+		if (this.at().type == "identifier" && this.at(1).matches("operator", "="))
+			return this.parseVarAssignment();
+
 		let expr = this.parseLogicExpr();
 		return expr;
 	}
+
+	parseVarAssignment() {
+		let res = new ParseResult();
+
+		let name = this.advance(2);
+		let value = res.register(this.parseExpr());
+		if (res.error) return res;
+
+		let leftPos = name.leftPos;
+		let rightPos = value.rightPos;
+
+		return res.success(
+			newNode({
+				type: "var-assignment",
+				name: name,
+				value: value
+			}).setPos(leftPos, rightPos));
+	}
+
+	// ---------------------------------------------------------------------------
 
 	parseLogicExpr() {
 		let res = new ParseResult();
@@ -171,6 +250,8 @@ let Parser = class {
 		return res.success(left);
 	}
 
+	// ---------------------------------------------------------------------------
+
 	parsePrimaryExpr() {
 		let res = new ParseResult();
 		let token = this.advance();
@@ -239,6 +320,18 @@ let Parser = class {
 					operator: operator,
 					argument: argument
 				}).setPos(leftPos, rightPos));
+
+		// comment expression
+		} else if (token.type == "comment") {
+			return res.success(
+				newNode({
+					type: "comment-expr",
+					value: token.value
+				}).setPos(leftPos, rightPos));
+
+		// semicolon
+		} else if (token.matches("symbol", ";")) {
+			return res.success();
 		}
 
 		// Setting the value variable to the token value.

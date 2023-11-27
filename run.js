@@ -2,9 +2,11 @@ let utils = require("util");
 let Lexer = require("./frontend/lexer/lexer.js");
 let Parser = require("./frontend/parser/parser.js");
 let Interpreter = require("./frontend/interpreter/interpreter.js");
+let VariableTable = require("./frontend/interpreter/variabletable.js");
 
 let logProcess = function(value) {
-	console.log(`PROCESS: ${value}`);
+	let ticks = Math.round( performance.now() );
+	console.log(`[${ticks} ms] PROCESS: ${value}`);
 }
 
 let run = function(filename, code, flags) {
@@ -12,6 +14,7 @@ let run = function(filename, code, flags) {
 	let showLexer = flags.includes("--lexer");
 	let showParser = flags.includes("--parser");
 	let showInterp = flags.includes("--rtvalue");
+	let showVarTable = flags.includes("--var-table");
 	// ---------------------------------------------
 
 	// Lexer
@@ -46,9 +49,12 @@ let run = function(filename, code, flags) {
 		console.log(utils.inspect(ast.node, {showHidden: false, depth: null, colors: true}));
 
 	// Interpreter
+	if (showProcess) logProcess("creating variable table...");
+	let varTable = new VariableTable();
+
 	if (showProcess) logProcess("interpreting...");
 	let interp = new Interpreter(filename);
-	let result = interp.evalPrimary(ast.node);
+	let result = interp.evalPrimary(ast.node, varTable);
 
 	// Checking interpreter error
 	if (result.error) {
@@ -59,6 +65,10 @@ let run = function(filename, code, flags) {
 	// Output last evaluated value
 	if (showInterp)
 		console.log(result.value);
+
+	// Output the variable table
+	if (showVarTable)
+		console.log(utils.inspect(varTable.table, {showHidden: false, depth: null, colors: true}));
 }
 
 module.exports = run;

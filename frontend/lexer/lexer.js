@@ -45,6 +45,8 @@ let Lexer = class {
 		return this.position.index < this.code.length;
 	}
 
+	// ---------------------------------------------------------------------------
+
 	// Makes tokens
 	lexerize() {
 		let res = new lexerResult();
@@ -106,6 +108,8 @@ let Lexer = class {
 
 		return res.success(listTokens);
 	}
+
+	// ---------------------------------------------------------------------------
 
 	lexerizeComment() {
 		let leftPos = this.position.clone();
