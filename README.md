@@ -23,7 +23,7 @@
 	+ Add an operator that would synchronize both original and copied value
 		```ts
 		let x = 5;
-		let y = &x;
+		let y = *x;
 		y = 10;
 		// x: 10
 		// y: 10
