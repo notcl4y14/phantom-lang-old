@@ -33,6 +33,9 @@ let Interpreter = class {
 	toBoolean(value) {
 		if (!value) return;
 
+		if (value.type == "boolean")
+			return value.value;
+
 		return
 			!(value.type === "undefined"
 			|| value.type === "null"
@@ -60,6 +63,9 @@ let Interpreter = class {
 	evalPrimary(node, varTable) {
 		let res = new RuntimeResult();
 
+		if (["number", "string", "boolean", "null", "undefined"].includes(node.type))
+			return res.success(node);
+
 		if (node.type == "numeric-literal") {
 			return res.success({
 				type: "number",
@@ -83,12 +89,18 @@ let Interpreter = class {
 
 		} else if (node.type == "identifier") {
 			let variable = varTable.lookup(node.value);
-			return variable ? variable : {type: "undefined", value: null};
+			return variable ? res.success(variable) : res.success({type: "undefined", value: null});
 
 		// ---------------------------------------------------------------------------
 
 		} else if (node.type == "program") {
 			return this.evalProgram(node, varTable);
+
+		} else if (node.type == "if-statement") {
+			return this.evalIfStatement(node, varTable);
+
+		} else if (node.type == "block-statement") {
+			return this.evalBlockStatement(node, varTable);
 
 		} else if (node.type == "var-declaration") {
 			return this.evalVarDeclaration(node, varTable);
@@ -131,11 +143,55 @@ let Interpreter = class {
 	// ---------------------------------------------------------------------------
 	// Statements
 	// ---------------------------------------------------------------------------
+	evalIfStatement(node, varTable) {
+		let res = new RuntimeResult();
+
+		let block = node.block;
+		let condition = res.register(this.evalPrimary(node.condition, varTable));
+		if (res.error) return res;
+
+		let isCondTrue = this.toBoolean(condition);
+		if (!isCondTrue) {
+
+			if (node.alternate) {
+				let lastEvalValue = res.register(this.evalPrimary(node.alternate, varTable));
+				if (res.error) return res;
+				return res.success(lastEvalValue);
+			}
+
+			return res.success();
+		}
+
+		let lastEvalValue = res.register(this.evalPrimary(block, varTable));
+		if (res.error) return res;
+
+		return res.success(lastEvalValue);
+	}
+
+	evalBlockStatement(node, varTable) {
+		let res = new RuntimeResult();
+		let body = node.body;
+
+		let lastEvalValue;
+
+		body.forEach((node) => {
+
+			lastEvalValue = res.register(
+				this.evalPrimary(node, varTable));
+			if (res.error) return res;
+
+		});
+
+		if (res.error) return res;
+		return res.success(lastEvalValue);
+	}
+
 	evalVarDeclaration(node, varTable) {
 		let res = new RuntimeResult();
 
 		let name = node.name.value;
 		let value = res.register(this.evalPrimary(node.value, varTable));
+		if (res.error) return res;
 
 		let variable = varTable.declare(name, value);
 

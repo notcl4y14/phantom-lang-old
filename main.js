@@ -8,12 +8,34 @@ let initError = function(value) {
 }
 
 let validArguments = [
+	"--help",
 	"--show-process",
 	"--lexer",
 	"--parser",
 	"--rtvalue",
 	"--var-table"
 ];
+
+let langUsage = function() {
+	let str = [
+		"",
+		"Phantom language (UNDER CONSTRUCTION)",
+		"Made by klei :D (notcl4y)",
+		"GitHub repo: https://github.com/notcl4y14/phantom-lang",
+		"",
+		"Commands:",
+		"--help - Show this list",
+		"",
+		"Commands for debugging:",
+		"--show-process - Outputs at what stage the language is at",
+		"--lexer - Outputs the list of tokens (lexer result)",
+		"--parser - Outputs the AST (parser result)",
+		"--rtvalue - Outputs the last evaluated value (interpreter result)",
+		"--var-table - Outputs the variable table"
+	];
+
+	str.forEach((value) => console.log(value));
+}
 
 let main = function() {
 	let args = process.argv;
@@ -46,6 +68,9 @@ let main = function() {
 		// Set the filename
 		filename = argument;
 	}
+
+	if (inputArgs.includes("--help"))
+		return langUsage();
 
 	// Check if filename isn't specified
 	if (!filename)

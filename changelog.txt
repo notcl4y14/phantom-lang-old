@@ -8,6 +8,12 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 28/11/2023
+- Added "--help" argument
+	+ Outputs the list of commands
+- Added if/else statement
+- Parser now searches in logic-expr instead of primary-expr for var-declaration's value
+
 // 27/11/2023
 - Created a variable table
 - Added the ability to use semicolons

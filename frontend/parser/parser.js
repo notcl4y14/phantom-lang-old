@@ -42,6 +42,8 @@ let Parser = class {
 		return this.at().type != "EOF";
 	}
 
+	// ---------------------------------------------------------------------------
+
 	// Makes AST
 	parse() {
 		let program = {
@@ -77,10 +79,12 @@ let Parser = class {
 	parseStmt() {
 		if (this.at().type == "keyword" && ["let", "var"].includes(this.at().value)) {
 			return this.parseVariableDeclaration();
+
+		} else if (this.at().matches("keyword", "if")) {
+			return this.parseIfStatement();
 		}
 
-		let stmt = this.parseExpr();
-		return stmt;
+		return this.parseExpr();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -91,9 +95,9 @@ let Parser = class {
 		let keyword = this.advance();
 		let leftPos = keyword.leftPos;
 
-		// primary-expr is used instead to prevent parser from detecting
-		// a variable-assignment node "(let) x = 5"
-		let name = res.register(this.parsePrimaryExpr());
+		// logic-expr is used instead to prevent parser from detecting
+		// a variable-assignment node "(let) x = 5" when using parseExpr() instead
+		let name = res.register(this.parseLogicExpr());
 		if (res.error) return res;
 
 		if (name.type !== "identifier")
@@ -123,6 +127,76 @@ let Parser = class {
 				type: "var-declaration",
 				name: name,
 				value: value
+			}).setPos(leftPos, rightPos));
+	}
+
+	parseIfStatement() {
+		let res = new ParseResult();
+
+		let keyword = this.advance();
+		let condition = res.register(this.parseExpr());
+		if (res.error) return res;
+
+		let block = res.register(this.parseBlockStatement());
+		if (res.error) return res;
+
+		let alternate = null;
+
+		if (this.at().matches("keyword", "else")) {
+			this.advance();
+
+			// else if
+			if (this.at().matches("keyword", "if")) {
+				alternate = res.register(this.parseIfStatement());
+				if (res.error) return res;
+
+			// else
+			} else {
+				alternate = res.register(this.parseBlockStatement());
+				if (res.error) return res;
+			}
+		}
+
+		let leftPos = keyword.leftPos;
+		let rightPos = block.rightPos;
+
+		return res.success(
+			newNode({
+				type: "if-statement",
+				condition: condition,
+				block: block,
+				alternate: alternate
+			}).setPos(leftPos, rightPos));
+	}
+
+	parseBlockStatement() {
+		let res = new ParseResult();
+
+		if (!this.at().matches("brace", "{"))
+			return res.failure(this.filename, this.at().rightPos, "Expected '{'");
+
+		let leftBrace = this.advance();
+		let body = [];
+
+		while (this.notEOF() && !this.at().matches("brace", "}")) {
+			let result = res.register(this.parseStmt());
+			if (res.error) return res;
+
+			if (result) body.push(result);
+		}
+
+		if (!this.at().matches("brace", "}"))
+			return res.failure(this.filename, this.at().rightPos, "Expected '}'");
+
+		let rightBrace = this.advance();
+
+		let leftPos = leftBrace.leftPos;
+		let rightPos = rightBrace.rightPos;
+
+		return res.success(
+			newNode({
+				type: "block-statement",
+				body: body
 			}).setPos(leftPos, rightPos));
 	}
 
