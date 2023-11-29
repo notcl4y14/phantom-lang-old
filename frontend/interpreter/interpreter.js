@@ -93,9 +93,15 @@ let Interpreter = class {
 
 		// ---------------------------------------------------------------------------
 
+		// values
+		} else if (node.type == "array-literal") {
+			return this.evalArrayLiteral(node, varTable);
+
+		// Misc.
 		} else if (node.type == "program") {
 			return this.evalProgram(node, varTable);
 
+		// Statements
 		} else if (node.type == "if-statement") {
 			return this.evalIfStatement(node, varTable);
 
@@ -105,6 +111,7 @@ let Interpreter = class {
 		} else if (node.type == "var-declaration") {
 			return this.evalVarDeclaration(node, varTable);
 
+		// expressions
 		} else if (node.type == "var-assignment") {
 			return this.evalVarAssignment(node, varTable);
 
@@ -122,6 +129,26 @@ let Interpreter = class {
 	}
 
 	// ---------------------------------------------------------------------------
+
+	// ---------------------------------------------------------------------------
+	// Values
+	// ---------------------------------------------------------------------------
+	evalArrayLiteral(node, varTable) {
+		let res = new RuntimeResult();
+		let values = [];
+
+		node.values.forEach((node) => {
+
+			let value = res.register(
+				this.evalPrimary(node, varTable));
+			if (res.error) return res;
+			values.push(value);
+
+		});
+
+		if (res.error) return res;
+		return res.success({type: "array", values: values});
+	}
 
 	// ---------------------------------------------------------------------------
 	// Misc.

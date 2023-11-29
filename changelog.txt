@@ -8,6 +8,9 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 29/11/2023
+- Added array literal
+
 // 28/11/2023
 - Added "--help" argument
 	+ Outputs the list of commands

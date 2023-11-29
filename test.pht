@@ -1,9 +1,2 @@
-let x = 5;
-
-if (x == 5) {
-	"x equals 5";
-} else if (x == 4) {
-	"x equals 4";
-} else {
-	"x equals something other";
-}
+let x = -5;
+let arr = [10, 5, 40, x];

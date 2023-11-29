@@ -366,6 +366,38 @@ let Parser = class {
 					type: "identifier",
 					value: token.value
 				}).setPos(leftPos, rightPos));
+
+		// array-literal
+		} else if (token.matches("bracket", "[")) {
+			let leftBracket = token;
+			let values = [];
+
+			while (this.notEOF() && !this.at().matches("bracket", "]")) {
+				let value = res.register(this.parseLogicExpr());
+				if (res.error) return res;
+
+				values.push(value);
+
+				if (!(this.at().matches("symbol", ",") || this.at().matches("bracket", "]")))
+					return res.failure(this.filename, this.at().rightPos, "Expected ',' | ']'");
+
+				if (this.at().matches("symbol", ","))
+					this.advance();
+			}
+
+			if (!this.at().matches("bracket", "]"))
+				return res.failure(this.filename, this.at().rightPos, "Expected ']'");
+
+			let rightBracket = this.advance();
+
+			let leftPos = leftBracket.leftPos;
+			let rightPos = rightBracket.rightPos;
+
+			return res.success(
+				newNode({
+					type: "array-literal",
+					values: values
+				}).setPos(leftPos, rightPos));
 		
 		// parenthesised expression
 		} else if (token.matches("parenthesis", "(")) {
