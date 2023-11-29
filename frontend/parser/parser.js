@@ -233,14 +233,16 @@ let Parser = class {
 
 	// ---------------------------------------------------------------------------
 
-	parseLogicExpr() {
+	parseBinaryExpr(name, operators, func) {
 		let res = new ParseResult();
-		let left = res.register(this.parseCompExpr());
+
+		let left = res.register(func.call(this));
 		if (res.error) return res;
 
-		while (this.notEOF() && this.at().type == "operator" && ["&&", "||"].includes(this.at().value)) {
+		while (this.notEOF() && this.at().type == "operator" && operators.includes(this.at().value)) {
+			
 			let operator = this.advance().value;
-			let right = res.register(this.parseCompExpr());
+			let right = res.register(func.call(this));
 			if (res.error) return res;
 
 			let leftPos = left.leftPos;
@@ -248,81 +250,28 @@ let Parser = class {
 
 			return res.success(
 				newNode({
-					type: "logical-expr",
+					type: name,
 					left, operator, right
 				}).setPos(leftPos, rightPos));
 		}
 
 		return res.success(left);
+	}
+
+	parseLogicExpr() {
+		return this.parseBinaryExpr("logical-expr", ["&&", "||"], this.parseCompExpr);
 	}
 
 	parseCompExpr() {
-		let res = new ParseResult();
-		let left = res.register(this.parseAddExpr());
-		if (res.error) return res;
-
-		while (this.notEOF() && this.at().type == "operator" && ["<", ">", "<=", ">=", "==", "!="].includes(this.at().value)) {
-			let operator = this.advance().value;
-			let right = res.register(this.parseAddExpr());
-			if (res.error) return res;
-
-			let leftPos = left.leftPos;
-			let rightPos = right.rightPos;
-
-			return res.success(
-				newNode({
-					type: "binary-expr",
-					left, operator, right
-				}).setPos(leftPos, rightPos));
-		}
-
-		return res.success(left);
+		return this.parseBinaryExpr("binary-expr", ["<", ">", "<=", ">=", "==", "!="], this.parseAddExpr);
 	}
 
 	parseAddExpr() {
-		let res = new ParseResult();
-		let left = res.register(this.parseMultExpr());
-		if (res.error) return res;
-
-		while (this.notEOF() && this.at().type == "operator" && ["+", "-"].includes(this.at().value)) {
-			let operator = this.advance().value;
-			let right = res.register(this.parseMultExpr());
-			if (res.error) return res;
-
-			let leftPos = left.leftPos;
-			let rightPos = right.rightPos;
-
-			return res.success(
-				newNode({
-					type: "binary-expr",
-					left, operator, right
-				}).setPos(leftPos, rightPos));
-		}
-
-		return res.success(left);
+		return this.parseBinaryExpr("binary-expr", ["+", "-"], this.parseMultExpr);
 	}
 
 	parseMultExpr() {
-		let res = new ParseResult();
-		let left = res.register(this.parsePrimaryExpr());
-		if (res.error) return res;
-
-		while (this.notEOF() && this.at().type == "operator" && ["*", "/", "%"].includes(this.at().value)) {
-			let operator = this.advance().value;
-			let right = res.register(this.parsePrimaryExpr());
-			if (res.error) return res;
-
-			let leftPos = left.leftPos;
-			let rightPos = right.rightPos;
-
-			return res.success(
-				newNode({
-					type: "binary-expr",
-					left, operator, right
-				}).setPos(leftPos, rightPos));
-		}
-
-		return res.success(left);
+		return this.parseBinaryExpr("binary-expr", ["*", "/", "%"], this.parsePrimaryExpr);
 	}
 
 	// ---------------------------------------------------------------------------

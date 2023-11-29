@@ -9,6 +9,8 @@
 // -----------------------------------------------------------------
 
 // 29/11/2023
+- Created a function that processes a binary expression with parameters
+----------
 - Found a way to set the require root (node-rfr)
 - Renamed variabletable.js to vartable.js
 ----------
