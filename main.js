@@ -1,5 +1,6 @@
+let rfr = require("rfr");
 let fs = require("fs");
-let run = require("./run.js");
+let run = rfr("run.js");
 
 // Outputs the initialization error
 let initError = function(value) {

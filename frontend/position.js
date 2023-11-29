@@ -1,4 +1,5 @@
-let Colors = require("../utils/colors.js");
+let rfr = require("rfr");
+let Colors = rfr("utils/colors.js");
 
 let Position = class {
 	constructor(index, line, column) {

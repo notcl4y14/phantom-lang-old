@@ -1,8 +1,9 @@
+let rfr = require("rfr");
 let utils = require("util");
-let Lexer = require("./frontend/lexer/lexer.js");
-let Parser = require("./frontend/parser/parser.js");
-let Interpreter = require("./frontend/interpreter/interpreter.js");
-let VariableTable = require("./frontend/interpreter/variabletable.js");
+let Lexer = rfr("frontend/lexer/lexer.js");
+let Parser = rfr("frontend/parser/parser.js");
+let Interpreter = rfr("frontend/interpreter/interpreter.js");
+let VariableTable = rfr("frontend/interpreter/vartable.js");
 
 let logProcess = function(value) {
 	let ticks = Math.round( performance.now() );

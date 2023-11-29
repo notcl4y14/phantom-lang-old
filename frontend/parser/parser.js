@@ -1,4 +1,5 @@
-let ParseResult = require("../../frontend/parser/parse-result.js");
+let rfr = require("rfr");
+let ParseResult = rfr("frontend/parser/parse-result.js");
 
 let newNode = function(obj) {
 	let node = obj;

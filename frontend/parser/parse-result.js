@@ -1,4 +1,5 @@
-let Error = require("../error.js");
+let rfr = require("rfr");
+let Error = rfr("frontend/error.js");
 
 let ParseResult = class {
 	constructor() {

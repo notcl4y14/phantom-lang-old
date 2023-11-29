@@ -1,5 +1,6 @@
-let Error = require("../error.js");
-let VariableTable = require("./variabletable.js");
+let rfr = require("rfr");
+let Error = rfr("frontend/error.js");
+let VariableTable = rfr("frontend/interpreter/vartable.js");
 
 let RuntimeResult = class {
 	constructor() {
@@ -93,7 +94,7 @@ let Interpreter = class {
 
 		// ---------------------------------------------------------------------------
 
-		// values
+		// Values
 		} else if (node.type == "array-literal") {
 			return this.evalArrayLiteral(node, varTable);
 
@@ -111,7 +112,7 @@ let Interpreter = class {
 		} else if (node.type == "var-declaration") {
 			return this.evalVarDeclaration(node, varTable);
 
-		// expressions
+		// Expressions
 		} else if (node.type == "var-assignment") {
 			return this.evalVarAssignment(node, varTable);
 

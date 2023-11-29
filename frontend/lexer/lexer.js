@@ -1,6 +1,7 @@
-let Token = require("./token.js");
-let Error = require("../error.js");
-let Position = require("../position.js");
+let rfr = require("rfr");
+let Token = rfr("frontend/lexer/token.js");
+let Error = rfr("frontend/error.js");
+let Position = rfr("frontend/position.js");
 
 let lexerKeywords = ["let", "var", "if", "else", "for", "while", "function"];
 

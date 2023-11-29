@@ -9,6 +9,9 @@
 // -----------------------------------------------------------------
 
 // 29/11/2023
+- Found a way to set the require root (node-rfr)
+- Renamed variabletable.js to vartable.js
+----------
 - Added array literal
 
 // 28/11/2023
