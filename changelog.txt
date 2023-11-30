@@ -8,6 +8,15 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 30/11/2023
+- Added a sub-variable table in the block statement
+- Added while statement
+- Added "+=", "-=", "*=" and "/=" assignment operators
+- Changed an undeclared variable value from null to undefined
+- Changed fs.readFile to fs.readFileSync when reading a code
+- Realized how much the code is messed up
+	+ Now it's broken
+
 // 29/11/2023
 - Created a function that processes a binary expression with parameters
 ----------

@@ -64,7 +64,7 @@ let Lexer = class {
 			} else if (this.at(2) == "/*") {
 				listTokens.push( this.lexerizeMultilineComment() );
 
-			} else if (["<=", ">=", "==", "!=", "&&", "||"].includes(this.at(2))) {
+			} else if (["+=", "-=", "*=", "/=", "<=", ">=", "==", "!=", "&&", "||"].includes(this.at(2))) {
 				listTokens.push( new Token("operator", this.at(2))
 					.setPos(this.position.clone()));
 

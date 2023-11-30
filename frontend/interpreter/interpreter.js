@@ -63,6 +63,7 @@ let Interpreter = class {
 
 	evalPrimary(node, varTable) {
 		let res = new RuntimeResult();
+		if (!node) return res.success();
 
 		if (["number", "string", "boolean", "null", "undefined"].includes(node.type))
 			return res.success(node);
@@ -105,6 +106,9 @@ let Interpreter = class {
 		// Statements
 		} else if (node.type == "if-statement") {
 			return this.evalIfStatement(node, varTable);
+
+		} else if (node.type == "while-statement") {
+			return this.evalWhileStatement(node, varTable);
 
 		} else if (node.type == "block-statement") {
 			return this.evalBlockStatement(node, varTable);
@@ -196,16 +200,39 @@ let Interpreter = class {
 		return res.success(lastEvalValue);
 	}
 
+	evalWhileStatement(node, varTable) {
+		let res = new RuntimeResult();
+
+		let block = node.block;
+		let condition = res.register(this.evalPrimary(node.condition, varTable));
+		if (res.error) return res;
+
+		let lastEvalValue;
+		let isCondTrue = this.toBoolean(condition);
+
+		while (isCondTrue) {
+			lastEvalValue = res.register(this.evalPrimary(block, varTable));
+			if (res.error) return res;
+
+			condition = res.register(this.evalPrimary(node.condition, varTable));
+			isCondTrue = this.toBoolean(condition);
+			if (!isCondTrue) break;
+		}
+
+		return res.success(lastEvalValue);
+	}
+
 	evalBlockStatement(node, varTable) {
 		let res = new RuntimeResult();
 		let body = node.body;
+		let _varTable = new VariableTable(varTable);
 
 		let lastEvalValue;
 
 		body.forEach((node) => {
 
 			lastEvalValue = res.register(
-				this.evalPrimary(node, varTable));
+				this.evalPrimary(node, _varTable));
 			if (res.error) return res;
 
 		});
@@ -236,7 +263,27 @@ let Interpreter = class {
 		let res = new RuntimeResult();
 
 		let name = node.name.value;
-		let value = res.register(this.evalPrimary(node.value, varTable));
+		let value;
+
+		let left = varTable.lookup(node.name);
+		if (!left) return res.failure(this.filename, node.name.rightPos, `Variable '${name}' does not exist`);
+
+		let right = res.register(this.evalPrimary(node.value, varTable));
+		if (res.error) return res;
+
+		if (node.operator == "=")
+			value = right.value;
+		if (node.operator == "+=")
+			value = left.value + right.value;
+		if (node.operator == "-=")
+			value = left.value - right.value;
+		if (node.operator == "*=")
+			value = left.value * right.value;
+		if (node.operator == "/=")
+			value = left.value / right.value;
+
+		value = res.register(this.evalPrimary(value));
+		if (res.error) return res;
 
 		let variable = varTable.set(name, value);
 

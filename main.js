@@ -77,13 +77,15 @@ let main = function() {
 	if (!filename)
 		return initError("Please specify a filename!");
 
-	fs.readFile(filename, "utf-8", (error, code) => {
-		// File doesn't exist
-		if (error)
-			return initError(`${filename} doesn't exist!`);
+	let code = fs.readFileSync(filename, "utf-8");
 
-		run(filename, code, inputArgs);
-	});
+	// File doesn't exist
+	if (code instanceof Error)
+		return initError(`${filename} doesn't exist!`);
+
+	run(filename, code, inputArgs);
+
+	// console.log(`Program finished at ${Math.floor(performance.now())} ms!`);
 
 	// run("<stdin>", "let x = function() {};", inputArgs);
 }

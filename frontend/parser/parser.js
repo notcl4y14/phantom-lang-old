@@ -83,6 +83,9 @@ let Parser = class {
 
 		} else if (this.at().matches("keyword", "if")) {
 			return this.parseIfStatement();
+
+		} else if (this.at().matches("keyword", "while")) {
+			return this.parseWhileStatement();
 		}
 
 		return this.parseExpr();
@@ -111,7 +114,7 @@ let Parser = class {
 			return res.success(newNode({
 				type: "var-declaration",
 				name: name,
-				value: {type: "literal", value: "null"}
+				value: {type: "literal", value: "undefined"}
 			}).setPos(leftPos, rightPos));
 		}
 
@@ -170,6 +173,27 @@ let Parser = class {
 			}).setPos(leftPos, rightPos));
 	}
 
+	parseWhileStatement() {
+		let res = new ParseResult();
+
+		let keyword = this.advance();
+		let condition = res.register(this.parseExpr());
+		if (res.error) return res;
+
+		let block = res.register(this.parseBlockStatement());
+		if (res.error) return res;
+
+		let leftPos = keyword.leftPos;
+		let rightPos = block.rightPos;
+
+		return res.success(
+			newNode({
+				type: "while-statement",
+				condition: condition,
+				block: block
+			}).setPos(leftPos, rightPos));
+	}
+
 	parseBlockStatement() {
 		let res = new ParseResult();
 
@@ -206,7 +230,7 @@ let Parser = class {
 	// ---------------------------------------------------------------------------
 	parseExpr() {
 		// var-assignment
-		if (this.at().type == "identifier" && this.at(1).matches("operator", "="))
+		if (this.at().type == "identifier" && this.at(1).type == "operator" && ["=", "+=", "-=", "*=", "/="].includes(this.at(1).value))
 			return this.parseVarAssignment();
 
 		let expr = this.parseLogicExpr();
@@ -216,7 +240,12 @@ let Parser = class {
 	parseVarAssignment() {
 		let res = new ParseResult();
 
-		let name = this.advance(2);
+		let name = this.advance();
+		let operator = this.advance();
+
+		if (!["=", "+=", "-=", "*=", "/="].includes(operator.value))
+			return res.failure(this.filename, operator.rightPos, "Expected '=' or (+-*/) - '='");
+
 		let value = res.register(this.parseExpr());
 		if (res.error) return res;
 
@@ -227,7 +256,8 @@ let Parser = class {
 			newNode({
 				type: "var-assignment",
 				name: name,
-				value: value
+				value: value,
+				operator: operator.value
 			}).setPos(leftPos, rightPos));
 	}
 
