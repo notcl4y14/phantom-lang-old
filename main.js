@@ -11,6 +11,7 @@ let initError = function(value) {
 let validArguments = [
 	"--help",
 	"--show-process",
+	"--ticks",
 	"--lexer",
 	"--parser",
 	"--rtvalue",
@@ -85,8 +86,9 @@ let main = function() {
 
 	run(filename, code, inputArgs);
 
-	// console.log(`Program finished at ${Math.floor(performance.now())} ms!`);
-
-	// run("<stdin>", "let x = function() {};", inputArgs);
+	if (inputArgs.includes("--ticks")) {
+		let ticks = Math.floor(performance.now());
+		console.log(`Program finished in ${ticks} ms!`);
+	}
 }
 main();

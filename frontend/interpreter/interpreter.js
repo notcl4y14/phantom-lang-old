@@ -68,66 +68,69 @@ let Interpreter = class {
 		if (["number", "string", "boolean", "null", "undefined"].includes(node.type))
 			return res.success(node);
 
-		if (node.type == "numeric-literal") {
-			return res.success({
-				type: "number",
-				value: node.value
-			});
-
-		} else if (node.type == "string-literal") {
-			return res.success({
-				type: "string",
-				value: node.value
-			});
-
-		} else if (node.type == "literal") {
-			if (["true", "false"].includes(node.value))
+		switch (node.type) {
+			case "numeric-literal":
 				return res.success({
-					type: "boolean",
-					value: node.value == "true"
+					type: "number",
+					value: node.value
 				});
 
-			return res.success({type: node.value, value: null});
+			case "string-literal":
+				return res.success({
+					type: "string",
+					value: node.value
+				});
 
-		} else if (node.type == "identifier") {
-			let variable = varTable.lookup(node.value);
-			return variable ? res.success(variable) : res.success({type: "undefined", value: null});
+			case "literal":
+				if (["true", "false"].includes(node.value))
+					return res.success({
+						type: "boolean",
+						value: node.value == "true"
+					});
 
-		// ---------------------------------------------------------------------------
+				return res.success({type: node.value, value: null});
 
-		// Values
-		} else if (node.type == "array-literal") {
-			return this.evalArrayLiteral(node, varTable);
+			case "identifier":
+				let variable = varTable.lookup(node.value);
+				return variable
+					? res.success(variable)
+					: res.failure(this.filename, node.rightPos, `Variable '${node.value}' does not exist`);
 
-		// Misc.
-		} else if (node.type == "program") {
-			return this.evalProgram(node, varTable);
+			// ---------------------------------------------------------------------------
 
-		// Statements
-		} else if (node.type == "if-statement") {
-			return this.evalIfStatement(node, varTable);
+			// Values
+			case "array-literal":
+				return this.evalArrayLiteral(node, varTable);
 
-		} else if (node.type == "while-statement") {
-			return this.evalWhileStatement(node, varTable);
+			// Misc.
+			case "program":
+				return this.evalProgram(node, varTable);
 
-		} else if (node.type == "block-statement") {
-			return this.evalBlockStatement(node, varTable);
+			// Statements
+			case "if-statement":
+				return this.evalIfStatement(node, varTable);
 
-		} else if (node.type == "var-declaration") {
-			return this.evalVarDeclaration(node, varTable);
+			case "while-statement":
+				return this.evalWhileStatement(node, varTable);
 
-		// Expressions
-		} else if (node.type == "var-assignment") {
-			return this.evalVarAssignment(node, varTable);
+			case "block-statement":
+				return this.evalBlockStatement(node, varTable);
 
-		} else if (node.type == "logical-expr") {
-			return this.evalLogicalExpr(node, varTable);
+			case "var-declaration":
+				return this.evalVarDeclaration(node, varTable);
 
-		} else if (node.type == "binary-expr") {
-			return this.evalBinaryExpr(node, varTable);
+			// Expressions
+			case "var-assignment":
+				return this.evalVarAssignment(node, varTable);
 
-		} else if (node.type == "unary-expr") {
-			return this.evalUnaryExpr(node, varTable);
+			case "logical-expr":
+				return this.evalLogicalExpr(node, varTable);
+
+			case "binary-expr":
+				return this.evalBinaryExpr(node, varTable);
+
+			case "unary-expr":
+				return this.evalUnaryExpr(node, varTable);
 		}
 
 		return res.failure(this.filename, node.rightPos, `Node Type ${node.type} has not been setup for interpretation`);
