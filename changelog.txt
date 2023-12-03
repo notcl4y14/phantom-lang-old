@@ -8,6 +8,12 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 3/12/2023
+- Fixed errors
+	+ The "Variable x does not exist" error showed up altough the variable exists
+	+ The variable assignment value
+- Changed the return values of binary and unary expression to be the left node type
+
 // 30/11/2023
 - Added a sub-variable table in the block statement
 - Added while statement

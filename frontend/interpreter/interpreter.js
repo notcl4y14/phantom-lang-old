@@ -1,4 +1,4 @@
-let rfr = require("rfr");
+ let rfr = require("rfr");
 let Error = rfr("frontend/error.js");
 let VariableTable = rfr("frontend/interpreter/vartable.js");
 
@@ -249,9 +249,8 @@ let Interpreter = class {
 		if (res.error) return res;
 
 		let variable = varTable.declare(name, value);
-
-		if (!variable)
-			return res.failure(this.filename, node.name.rightPos, `Variable '${name}' cannot be redeclared`);
+		if (!variable) return res.failure(this.filename,
+			node.name.rightPos, `Variable '${name}' cannot be redeclared`);
 
 		return res.success(variable);
 	}
@@ -265,30 +264,24 @@ let Interpreter = class {
 		let name = node.name.value;
 		let value;
 
-		let left = varTable.lookup(node.name);
+		let left = varTable.lookup(name);
 		if (!left) return res.failure(this.filename, node.name.rightPos, `Variable '${name}' does not exist`);
 
 		let right = res.register(this.evalPrimary(node.value, varTable));
 		if (res.error) return res;
 
-		if (node.operator == "=")
-			value = right.value;
-		if (node.operator == "+=")
-			value = left.value + right.value;
-		if (node.operator == "-=")
-			value = left.value - right.value;
-		if (node.operator == "*=")
-			value = left.value * right.value;
-		if (node.operator == "/=")
-			value = left.value / right.value;
+		switch (node.operator) {
+			case "=": value = right.value; break;
+			case "+=": value = left.value + right.value; break;
+			case "-=": value = left.value - right.value; break;
+			case "*=": value = left.value * right.value; break;
+			case "/=": value = left.value / right.value; break;
+		}
 
-		value = res.register(this.evalPrimary(value));
-		if (res.error) return res;
-
+		value = {type: left.type, value: value};
 		let variable = varTable.set(name, value);
-
-		if (!variable)
-			return res.failure(this.filename, node.name.rightPos, `Variable '${name}' does not exist`);
+		if (!variable) return res.failure(this.filename,
+			node.name.rightPos, `Variable '${name}' does not exist`);
 
 		return res.success(variable);
 	}
@@ -309,6 +302,9 @@ let Interpreter = class {
 			case "&&":
 				result = this.toBoolean(left) && this.toBoolean(right);
 				break;
+
+			// TODO: Make another operator or || operator to choose values like
+			// let y = x || 10;
 			case "||":
 				result = this.toBoolean(left) || this.toBoolean(right);
 				break;
@@ -376,7 +372,7 @@ let Interpreter = class {
 		if (result === true || result === false)
 			return res.success({type: "boolean", value: result});
 
-		return res.success({type: "number", value: result});
+		return res.success({type: left.type, value: result});
 	}
 
 	evalUnaryExpr(node, varTable) {
@@ -403,7 +399,7 @@ let Interpreter = class {
 		if (result === true || result === false)
 			return res.success({type: "boolean", value: result});
 
-		return res.success({type: "number", value: result});
+		return res.success({type: argument.type, value: result});
 	}
 }
 
