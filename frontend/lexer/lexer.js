@@ -55,7 +55,7 @@ let Lexer = class {
 
 		while (this.notEOF()) {
 
-			if (this.at() == " \t\r\n") {
+			if ((" \t\r\n").includes(this.at())) {
 				// Skip
 
 			} else if (this.at(2) == "//") {
@@ -98,6 +98,14 @@ let Lexer = class {
 				
 			} else if (("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_").includes(this.at())) {
 				listTokens.push( this.lexerizeIdent() );
+
+			} else {
+				let leftPos = this.position.clone();
+				let char = this.at();
+				this.advance();
+				let rightPos = this.position.clone();
+
+				return res.failure(this.filename, [leftPos, rightPos], `Undefined character '${char}'`);
 			}
 
 			// Advancing to the next character

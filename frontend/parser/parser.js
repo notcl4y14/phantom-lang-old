@@ -105,7 +105,7 @@ let Parser = class {
 		if (res.error) return res;
 
 		if (name.type !== "identifier")
-			return res.failure(this.filename, name.rightPos, "Expected an identifier");
+			return res.failure(this.filename, [name.leftPos, name.rightPos], "Expected an identifier");
 
 		// (let | var) (identifier);
 		if (!this.at().matches("operator", "=")) {
@@ -197,8 +197,10 @@ let Parser = class {
 	parseBlockStatement() {
 		let res = new ParseResult();
 
-		if (!this.at().matches("brace", "{"))
-			return res.failure(this.filename, this.at().rightPos, "Expected '{'");
+		if (!this.at().matches("brace", "{")) {
+			let token = this.at();
+			return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected '{'");
+		}
 
 		let leftBrace = this.advance();
 		let body = [];
@@ -210,8 +212,10 @@ let Parser = class {
 			if (result) body.push(result);
 		}
 
-		if (!this.at().matches("brace", "}"))
-			return res.failure(this.filename, this.at().rightPos, "Expected '}'");
+		if (!this.at().matches("brace", "}")) {
+			let token = this.at();
+			return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected '}'");
+		}
 
 		let rightBrace = this.advance();
 
@@ -233,6 +237,10 @@ let Parser = class {
 		if (this.at().type == "identifier" && this.at(1).type == "operator" && ["=", "+=", "-=", "*=", "/="].includes(this.at(1).value))
 			return this.parseVarAssignment();
 
+		// object-literal
+		else if (this.at().matches("brace", "{"))
+			return this.parseObjectExpr();
+
 		let expr = this.parseLogicExpr();
 		return expr;
 	}
@@ -244,7 +252,7 @@ let Parser = class {
 		let operator = this.advance();
 
 		if (!["=", "+=", "-=", "*=", "/="].includes(operator.value))
-			return res.failure(this.filename, operator.rightPos, "Expected '=' or (+-*/) - '='");
+			return res.failure(this.filename, [operator.leftPos, operator.rightPos], "Expected '=' or (+-*/) - '='");
 
 		let value = res.register(this.parseExpr());
 		if (res.error) return res;
@@ -258,6 +266,67 @@ let Parser = class {
 				name: name,
 				value: value,
 				operator: operator.value
+			}).setPos(leftPos, rightPos));
+	}
+
+	// https://github.com/tlaceby/guide-to-interpreters-series/blob/main/ep08-object-literals/frontend/parser.ts
+	parseObjectExpr() {
+		let res = new ParseResult();
+		let leftBrace = this.advance();
+		let properties = [];
+
+		while (this.notEOF() && !this.at().matches("brace", "}")) {
+			let key = this.advance();
+
+			if (key.type != "identifier" && key.type != "string") {
+				return res.failure(this.filename, [key.leftPos, key.rightPos], "Object literal key expected");
+			}
+
+			if (this.at().matches("symbol", ",")) {
+				this.advance();
+				properties.push(newNode({type: "property", key: key.value}).setPos(key.leftPos, key.rightPos));
+				continue;
+			} else if (this.at().matches("brace", "}")) {
+				properties.push(newNode({type: "property", key: key.value}).setPos(key.leftPos, key.rightPos));
+				continue;
+			}
+
+			if (!this.at().matches("symbol", ":")) {
+				let token = this.at();
+				return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected ':'");
+			}
+
+			this.advance();
+
+			let value = res.register(this.parseExpr());
+			if (res.error) return res;
+
+			properties.push(newNode({ type: "property", value, key: key.value }).setPos(key.leftPos, value.rightPos));
+
+			if (!this.at().matches("brace", "}")) {
+				if (!this.at().matches("symbol", ",")) {
+					let token = this.at();
+					return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected ',' | '}'");
+				}
+
+				this.advance();
+			}
+		}
+
+		if (!this.at().matches("brace", "}")) {
+			let token = this.at();
+			return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected '}'");
+		}
+
+		let rightBrace = this.advance();
+
+		let leftPos = leftBrace.leftPos;
+		let rightPos = rightBrace.rightPos;
+
+		return res.success(
+			newNode({
+				type: "object-literal",
+				properties
 			}).setPos(leftPos, rightPos));
 	}
 
@@ -358,15 +427,19 @@ let Parser = class {
 
 				values.push(value);
 
-				if (!(this.at().matches("symbol", ",") || this.at().matches("bracket", "]")))
-					return res.failure(this.filename, this.at().rightPos, "Expected ',' | ']'");
+				if (!(this.at().matches("symbol", ",") || this.at().matches("bracket", "]"))) {
+					let token = this.at();
+					return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected ',' | ']'");
+				}
 
 				if (this.at().matches("symbol", ","))
 					this.advance();
 			}
 
-			if (!this.at().matches("bracket", "]"))
-				return res.failure(this.filename, this.at().rightPos, "Expected ']'");
+			if (!this.at().matches("bracket", "]")) {
+				let token = this.at();
+				return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected ']'");
+			}
 
 			let rightBracket = this.advance();
 
@@ -385,8 +458,10 @@ let Parser = class {
 			let expr = res.register(this.parseStmt());
 			if (res.error) return res;
 
-			if (!this.at().matches("parenthesis", ")"))
-				return res.failure(this.filename, this.at().rightPos, "Expected ')'");
+			if (!this.at().matches("parenthesis", ")")) {
+				let token = this.at();
+				return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected ')'");
+			}
 
 			this.advance();
 
@@ -425,7 +500,7 @@ let Parser = class {
 		let value = token.value ? token.value : token.type;
 
 		// Unexpected token
-		return res.failure(this.filename, token.rightPos, `Unexpected token '${value}'`);
+		return res.failure(this.filename, [token.leftPos, token.rightPos], `Unexpected token '${value}'`);
 	}
 }
 

@@ -8,6 +8,11 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 4/12/2023
+- Added position range to errors (filename.pht: 1 : 4-10 : details)
+- Added lexer error
+- Added object literal
+
 // 3/12/2023
 - Non-existant variable now returns an error instead of the undefined value :P
 - Added the "--ticks" argument

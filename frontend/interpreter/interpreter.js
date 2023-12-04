@@ -102,6 +102,9 @@ let Interpreter = class {
 			case "array-literal":
 				return this.evalArrayLiteral(node, varTable);
 
+			case "object-literal":
+				return this.evalObjectLiteral(node, varTable);
+
 			// Misc.
 			case "program":
 				return this.evalProgram(node, varTable);
@@ -133,7 +136,7 @@ let Interpreter = class {
 				return this.evalUnaryExpr(node, varTable);
 		}
 
-		return res.failure(this.filename, node.rightPos, `Node Type ${node.type} has not been setup for interpretation`);
+		return res.failure(this.filename, [node.leftPos, node.rightPos], `Node Type ${node.type} has not been setup for interpretation`);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -156,6 +159,31 @@ let Interpreter = class {
 
 		if (res.error) return res;
 		return res.success({type: "array", values: values});
+	}
+
+	evalObjectLiteral(node, varTable) {
+		let res = new RuntimeResult();
+		let properties = {};
+
+		node.properties.forEach((property) => {
+
+			console.log(property);
+
+			let value = (property.value == undefined)
+				? varTable.lookup(property.key)
+				: res.register(this.evalPrimary(property.value, varTable));
+
+			if (res.error) return res;
+			properties[property.key] = value;
+
+			// TODO: Change the position range here
+			if (!value) return res.failure(this.filename,
+				[property.leftPos, property.rightPos], `Variable '${property.key}' does not exist`);
+
+		});
+
+		if (res.error) return res;
+		return res.success({type: "object", properties: properties});
 	}
 
 	// ---------------------------------------------------------------------------
@@ -253,7 +281,7 @@ let Interpreter = class {
 
 		let variable = varTable.declare(name, value);
 		if (!variable) return res.failure(this.filename,
-			node.name.rightPos, `Variable '${name}' cannot be redeclared`);
+			[node.name.leftPos, node.name.rightPos], `Variable '${name}' cannot be redeclared`);
 
 		return res.success(variable);
 	}
@@ -284,7 +312,7 @@ let Interpreter = class {
 		value = {type: left.type, value: value};
 		let variable = varTable.set(name, value);
 		if (!variable) return res.failure(this.filename,
-			node.name.rightPos, `Variable '${name}' does not exist`);
+			[node.name.leftPos, node.name.rightPos], `Variable '${name}' does not exist`);
 
 		return res.success(variable);
 	}
@@ -312,7 +340,7 @@ let Interpreter = class {
 				result = this.toBoolean(left) || this.toBoolean(right);
 				break;
 			default:
-				return res.failure(this.filename, node.leftPos, `Undefined logical expression operator '${operator}'`);
+				return res.failure(this.filename, [node.leftPos, node.rightPos], `Undefined logical expression operator '${operator}'`);
 		}
 
 		return res.success({type: "boolean", value: result});
@@ -370,7 +398,7 @@ let Interpreter = class {
 		}
 
 		if (result == null)
-			return res.failure(this.filename, node.leftPos, `Undefined binary expression operator '${operator}'`);
+			return res.failure(this.filename, [node.leftPos, node.rightPos], `Undefined binary expression operator '${operator}'`);
 
 		if (result === true || result === false)
 			return res.success({type: "boolean", value: result});
@@ -397,7 +425,7 @@ let Interpreter = class {
 		}
 
 		if (result == null)
-			return res.failure(this.filename, node.leftPos, `Undefined unary expression operator '${operator}'`);
+			return res.failure(this.filename, [node.leftPos, node.rightPos], `Undefined unary expression operator '${operator}'`);
 
 		if (result === true || result === false)
 			return res.success({type: "boolean", value: result});
