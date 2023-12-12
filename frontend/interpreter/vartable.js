@@ -14,6 +14,8 @@ let VariableTable = class {
 
 	set(name, value) {
 		if (!this.table[name]) {
+			// Prevent an error
+			if (!this.parent) return;
 			if (this.parent.lookup(name)) 
 				return this.parent.set(name, value);
 

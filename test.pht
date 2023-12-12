@@ -1,6 +1,5 @@
-let z = 30;
-let x = {
-	x: 10,
-	"y": 20,
-	z
-};
+log.writeln("Hello World!");
+let obj = {x: 10, y: 20, obj: {lol: "lol"}};
+log.writeln(obj);
+log.writeln(obj.x);
+log.writeln(obj.obj["lol"]);

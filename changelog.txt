@@ -8,6 +8,18 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// NOTE: I had to rewrite the features in another device since the power got broken and commit was unpushed :P
+// UPDATE NOTE: The power came back! And the lexerizeMultilineComment() change has been merged with the other features from the rewrite!
+// (5/12/2023) 10/12/2023 - 11/12/2023
+- Removed console.log() in interpreter.js that was used for debugging :P
+- Added member and call expressions
+- Added the built-in variable "log"
+	+ log.write(value) - outputs the value
+	+ log.writeln(value) - outputs the value with a newline
+- Added an advance function in lexerizeMultilineComment() to skip the "/" in "*/"
+- Separated toBoolean() and toNumber() functions from Interpreter into the "runtime" object and added runtime.getValue()
+- Reconstructed the runtime result
+
 // 4/12/2023
 - Added position range to errors (filename.pht: 1 : 4-10 : details)
 - Added lexer error

@@ -146,6 +146,8 @@ let Lexer = class {
 			this.advance();
 		}
 
+		// Advance from the "/"
+		this.advance();
 		let rightPos = this.position.clone();
 
 		return new Token("comment", commentStr)

@@ -1,9 +1,12 @@
 let rfr = require("rfr");
 let utils = require("util");
+
 let Lexer = rfr("frontend/lexer/lexer.js");
 let Parser = rfr("frontend/parser/parser.js");
 let Interpreter = rfr("frontend/interpreter/interpreter.js");
 let VariableTable = rfr("frontend/interpreter/vartable.js");
+
+let loadVarTable = rfr("load.js");
 
 let logProcess = function(value) {
 	let ticks = Math.round( performance.now() );
@@ -52,6 +55,7 @@ let run = function(filename, code, flags) {
 	// Interpreter
 	if (showProcess) logProcess("creating variable table...");
 	let varTable = new VariableTable();
+	loadVarTable(varTable);
 
 	if (showProcess) logProcess("interpreting...");
 	let interp = new Interpreter(filename);

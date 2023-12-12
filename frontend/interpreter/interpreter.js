@@ -1,9 +1,11 @@
- let rfr = require("rfr");
+let rfr = require("rfr");
 let Error = rfr("frontend/error.js");
 let VariableTable = rfr("frontend/interpreter/vartable.js");
+let runtime = rfr("frontend/interpreter/runtime.js");
 
 let RuntimeResult = class {
-	constructor() {
+	constructor(filename = null) {
+		this.filename = filename;
 		this.value = null;
 		this.error = null;
 	}
@@ -18,8 +20,8 @@ let RuntimeResult = class {
 		return this;
 	}
 
-	failure(filename, position, details) {
-		this.error = new Error(filename, position, details);
+	failure(details, position) {
+		this.error = new Error(this.filename, position, details);
 		return this;
 	}
 }
@@ -31,38 +33,8 @@ let Interpreter = class {
 
 	// ---------------------------------------------------------------------------
 
-	toBoolean(value) {
-		if (!value) return;
-
-		if (value.type == "boolean")
-			return value.value;
-
-		return
-			!(value.type === "undefined"
-			|| value.type === "null"
-			|| (value.type === "boolean" && value.value === false));
-	}
-
-	toNumber(value) {
-		if (!value) return;
-
-		if (value.type == "number") {
-			return value.value;
-
-		} else if (
-			["undefined", "null"].includes(value.type)
-			|| (value.type === "boolean" && value.value === false))
-		{
-			return 0;
-		}
-
-		return 1;
-	}
-
-	// ---------------------------------------------------------------------------
-
 	evalPrimary(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 		if (!node) return res.success();
 
 		if (["number", "string", "boolean", "null", "undefined"].includes(node.type))
@@ -94,7 +66,7 @@ let Interpreter = class {
 				let variable = varTable.lookup(node.value);
 				return variable
 					? res.success(variable)
-					: res.failure(this.filename, node.rightPos, `Variable '${node.value}' does not exist`);
+					: res.failure(`Variable '${node.value}' does not exist`, [node.leftPos, node.rightPos]);
 
 			// ---------------------------------------------------------------------------
 
@@ -125,6 +97,12 @@ let Interpreter = class {
 			// Expressions
 			case "var-assignment":
 				return this.evalVarAssignment(node, varTable);
+			
+			case "member-expr":
+				return this.evalMemberExpr(node, varTable);
+				
+			case "call-expr":
+				return this.evalCallExpr(node, varTable);
 
 			case "logical-expr":
 				return this.evalLogicalExpr(node, varTable);
@@ -136,7 +114,7 @@ let Interpreter = class {
 				return this.evalUnaryExpr(node, varTable);
 		}
 
-		return res.failure(this.filename, [node.leftPos, node.rightPos], `Node Type ${node.type} has not been setup for interpretation`);
+		return res.failure(`Node Type ${node.type} has not been setup for interpretation`, [node.leftPos, node.rightPos]);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -145,7 +123,7 @@ let Interpreter = class {
 	// Values
 	// ---------------------------------------------------------------------------
 	evalArrayLiteral(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 		let values = [];
 
 		node.values.forEach((node) => {
@@ -162,12 +140,10 @@ let Interpreter = class {
 	}
 
 	evalObjectLiteral(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 		let properties = {};
 
 		node.properties.forEach((property) => {
-
-			console.log(property);
 
 			let value = (property.value == undefined)
 				? varTable.lookup(property.key)
@@ -177,8 +153,8 @@ let Interpreter = class {
 			properties[property.key] = value;
 
 			// TODO: Change the position range here
-			if (!value) return res.failure(this.filename,
-				[property.leftPos, property.rightPos], `Variable '${property.key}' does not exist`);
+			if (!value) return res.failure(`Variable '${property.key}' does not exist`,
+				[property.leftPos, property.rightPos]);
 
 		});
 
@@ -190,7 +166,7 @@ let Interpreter = class {
 	// Misc.
 	// ---------------------------------------------------------------------------
 	evalProgram(program, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let body = program.body;
 		let lastEvalValue = null;
@@ -207,13 +183,13 @@ let Interpreter = class {
 	// Statements
 	// ---------------------------------------------------------------------------
 	evalIfStatement(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let block = node.block;
 		let condition = res.register(this.evalPrimary(node.condition, varTable));
 		if (res.error) return res;
 
-		let isCondTrue = this.toBoolean(condition);
+		let isCondTrue = runtime.toBoolean(condition);
 		if (!isCondTrue) {
 
 			if (node.alternate) {
@@ -232,21 +208,21 @@ let Interpreter = class {
 	}
 
 	evalWhileStatement(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let block = node.block;
 		let condition = res.register(this.evalPrimary(node.condition, varTable));
 		if (res.error) return res;
 
 		let lastEvalValue;
-		let isCondTrue = this.toBoolean(condition);
+		let isCondTrue = runtime.toBoolean(condition);
 
 		while (isCondTrue) {
 			lastEvalValue = res.register(this.evalPrimary(block, varTable));
 			if (res.error) return res;
 
 			condition = res.register(this.evalPrimary(node.condition, varTable));
-			isCondTrue = this.toBoolean(condition);
+			isCondTrue = runtime.toBoolean(condition);
 			if (!isCondTrue) break;
 		}
 
@@ -254,7 +230,7 @@ let Interpreter = class {
 	}
 
 	evalBlockStatement(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 		let body = node.body;
 		let _varTable = new VariableTable(varTable);
 
@@ -273,15 +249,15 @@ let Interpreter = class {
 	}
 
 	evalVarDeclaration(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let name = node.name.value;
 		let value = res.register(this.evalPrimary(node.value, varTable));
 		if (res.error) return res;
 
 		let variable = varTable.declare(name, value);
-		if (!variable) return res.failure(this.filename,
-			[node.name.leftPos, node.name.rightPos], `Variable '${name}' cannot be redeclared`);
+		if (!variable) return res.failure(`Variable '${name}' cannot be redeclared`,
+			[node.name.leftPos, node.name.rightPos]);
 
 		return res.success(variable);
 	}
@@ -290,13 +266,13 @@ let Interpreter = class {
 	// Expressions
 	// ---------------------------------------------------------------------------
 	evalVarAssignment(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let name = node.name.value;
 		let value;
 
 		let left = varTable.lookup(name);
-		if (!left) return res.failure(this.filename, node.name.rightPos, `Variable '${name}' does not exist`);
+		if (!left) return res.failure(`Variable '${name}' does not exist`, node.name.rightPos);
 
 		let right = res.register(this.evalPrimary(node.value, varTable));
 		if (res.error) return res;
@@ -311,14 +287,64 @@ let Interpreter = class {
 
 		value = {type: left.type, value: value};
 		let variable = varTable.set(name, value);
-		if (!variable) return res.failure(this.filename,
-			[node.name.leftPos, node.name.rightPos], `Variable '${name}' does not exist`);
+		if (!variable) return res.failure(`Variable '${name}' does not exist`,
+			[node.name.leftPos, node.name.rightPos]);
 
 		return res.success(variable);
 	}
 
+	evalMemberExpr(node, varTable) {
+		let res = new RuntimeResult(this.filename);
+		let object = res.register(this.evalPrimary(node.object, varTable));
+		if (res.error) return res;
+		
+		// let property = res.register(this.evalPrimary(node.property, varTable));
+		// if (res.error) return res;
+		let property = node.property;
+		let output = null;
+
+		switch (object.type) {
+			case "array": output = object.values[property.value]; break;
+			case "object": output = object.properties[property.value]; break;
+			default:
+				let type = object.type;
+				let leftPos = object.leftPos, rightPos = object.rightPos;
+				return res.failure(`Cannot access properties in ${type}`, [leftPos, rightPos]);
+		}
+
+		// If an array | object does not have a value
+		if (!output) {
+			return res.success({type: "undefined", value: null});
+		}
+
+		return res.success(output);
+	}
+
+	evalCallExpr(node, varTable) {
+		let res = new RuntimeResult(this.filename);
+
+		let args = [];
+		for (let arg of node.args) {
+			let argEval = res.register(this.evalPrimary(arg, varTable));
+			if (res.error) return res;
+			args.push(argEval);
+		}
+
+		let func = res.register(this.evalPrimary(node.member, varTable));
+		if (res.error) return res;
+
+		if (func.type != "function") {
+			// TODO: Change position range here
+			return res.failure(`Cannot call a value type of ${func.type}`,
+				[{line: undefined, column: undefined}, {line: undefined, column: undefined}]);s
+		}
+
+		let result = func.call(args, varTable) || {type: "undefined", value: null};
+		return res.success(result);
+	}
+
 	evalLogicalExpr(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let left = res.register(this.evalPrimary(node.left, varTable));
 		if (res.error) return res;
@@ -331,23 +357,23 @@ let Interpreter = class {
 
 		switch (operator) {
 			case "&&":
-				result = this.toBoolean(left) && this.toBoolean(right);
+				result = runtime.toBoolean(left) && runtime.toBoolean(right);
 				break;
 
 			// TODO: Make another operator or || operator to choose values like
 			// let y = x || 10;
 			case "||":
-				result = this.toBoolean(left) || this.toBoolean(right);
+				result = runtime.toBoolean(left) || runtime.toBoolean(right);
 				break;
 			default:
-				return res.failure(this.filename, [node.leftPos, node.rightPos], `Undefined logical expression operator '${operator}'`);
+				return res.failure(`Undefined logical expression operator '${operator}'`, [node.leftPos, node.rightPos]);
 		}
 
 		return res.success({type: "boolean", value: result});
 	}
 
 	evalBinaryExpr(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let left = res.register(this.evalPrimary(node.left, varTable));
 		if (res.error) return res;
@@ -361,19 +387,19 @@ let Interpreter = class {
 		switch (operator) {
 			// Arithmetic operators
 			case "+":
-				result = this.toNumber(left) + this.toNumber(right);
+				result = runtime.toNumber(left) + runtime.toNumber(right);
 				break;
 			case "-":
-				result = this.toNumber(left) - this.toNumber(right);
+				result = runtime.toNumber(left) - runtime.toNumber(right);
 				break;
 			case "*":
-				result = this.toNumber(left) * this.toNumber(right);
+				result = runtime.toNumber(left) * runtime.toNumber(right);
 				break;
 			case "/":
-				result = this.toNumber(left) / this.toNumber(right);
+				result = runtime.toNumber(left) / runtime.toNumber(right);
 				break;
 			case "%":
-				result = this.toNumber(left) % this.toNumber(right);
+				result = runtime.toNumber(left) % runtime.toNumber(right);
 				break;
 
 			// Comparisonal operators
@@ -398,7 +424,7 @@ let Interpreter = class {
 		}
 
 		if (result == null)
-			return res.failure(this.filename, [node.leftPos, node.rightPos], `Undefined binary expression operator '${operator}'`);
+			return res.failure(`Undefined binary expression operator '${operator}'`, [node.leftPos, node.rightPos]);
 
 		if (result === true || result === false)
 			return res.success({type: "boolean", value: result});
@@ -407,7 +433,7 @@ let Interpreter = class {
 	}
 
 	evalUnaryExpr(node, varTable) {
-		let res = new RuntimeResult();
+		let res = new RuntimeResult(this.filename);
 
 		let argument = res.register(this.evalPrimary(node.argument, varTable));
 		if (res.error) return res;
@@ -420,12 +446,12 @@ let Interpreter = class {
 				result = argument.value * -1;
 				break;
 			case "!":
-				result = !(this.toBoolean(argument.value));
+				result = !(runtime.toBoolean(argument.value));
 				break;
 		}
 
 		if (result == null)
-			return res.failure(this.filename, [node.leftPos, node.rightPos], `Undefined unary expression operator '${operator}'`);
+			return res.failure(`Undefined unary expression operator '${operator}'`, [node.leftPos, node.rightPos]);
 
 		if (result === true || result === false)
 			return res.success({type: "boolean", value: result});

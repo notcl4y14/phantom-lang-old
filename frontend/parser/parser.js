@@ -45,6 +45,47 @@ let Parser = class {
 
 	// ---------------------------------------------------------------------------
 
+	// ---------------------------------------------------------------------------
+	// Misc.
+	// ---------------------------------------------------------------------------
+	
+	parseArgs() {
+		let res = new ParseResult();
+		
+		let leftParen = this.advance();
+		if (!leftParen.matches("parenthesis", "(")) {
+			return res.failure(this.filename, [leftParen.leftPos, leftParen.rightPos], "Expected '('");
+		}
+		
+		let args = this.at().matches("parenthesis", ")")
+			? []
+			: res.register(this.parseArgsList());
+		if (res.error) return res;
+	
+		let rightParen = this.advance();
+		if (!rightParen.matches("parenthesis", ")")) {
+			return res.failure(this.filename, [rightParen.rightPos, rightParen.rightPos], "Expected ')'");
+		}
+		  
+		return res.success(args);
+	}
+	
+	parseArgsList() {
+		let res = new ParseResult();
+		let args = [res.register(this.parseExpr())];
+		if (res.error) return res;
+	
+		while (this.at().matches("symbol", ",") && this.advance()) {
+			let expr = res.register(this.parseExpr());
+			if (res.error) return res;
+			args.push(expr);
+		}
+	
+		return res.success(args);
+	}
+
+	// ---------------------------------------------------------------------------
+
 	// Makes AST
 	parse() {
 		let program = {
@@ -234,12 +275,18 @@ let Parser = class {
 	// ---------------------------------------------------------------------------
 	parseExpr() {
 		// var-assignment
-		if (this.at().type == "identifier" && this.at(1).type == "operator" && ["=", "+=", "-=", "*=", "/="].includes(this.at(1).value))
+		if (
+			this.at().type == "identifier"
+			&& this.at(1).type == "operator"
+			&& ["=", "+=", "-=", "*=", "/="].includes(this.at(1).value)
+		) {
 			return this.parseVarAssignment();
+		}
 
 		// object-literal
-		else if (this.at().matches("brace", "{"))
+		else if (this.at().matches("brace", "{")) {
 			return this.parseObjectExpr();
+		}
 
 		let expr = this.parseLogicExpr();
 		return expr;
@@ -370,7 +417,98 @@ let Parser = class {
 	}
 
 	parseMultExpr() {
-		return this.parseBinaryExpr("binary-expr", ["*", "/", "%"], this.parsePrimaryExpr);
+		return this.parseBinaryExpr("binary-expr", ["*", "/", "%"], this.parseCallMemberExpr);
+	}
+
+	// ---------------------------------------------------------------------------
+
+	parseCallMemberExpr() {
+		let res = new ParseResult();
+		
+		let member = res.register(this.parseMemberExpr());
+		if (res.error) return res;
+
+		if (this.at().matches("parenthesis", "(")) {
+			let expr = res.register(this.parseCallExpr(member));
+			if (res.error) return res;
+			return res.success(expr);
+		}
+
+		return res.success(member);
+	}
+  
+	parseCallExpr(member) {
+		let res = new ParseResult();
+
+		let callExpr = {
+			type: "call-expr",
+			member: member,
+			args: res.register(this.parseArgs()),
+		};
+		if (res.error) return res;
+
+		if (this.at().matches("parenthesis", "(")) {
+			callExpr = this.parseCallExpr(callExpr);
+			if (res.error) return res;
+		}
+
+		// TODO: Extend the position range
+		let leftPos = member.leftPos;
+		let rightPos = member.rightPos;
+
+		return res.success(newNode(callExpr)
+			.setPos(leftPos, rightPos));
+	}
+
+	parseMemberExpr() {
+		let res = new ParseResult();
+		let object = res.register(this.parsePrimaryExpr());
+		if (res.error) return res;
+
+		while (
+			this.at().matches("symbol", ".") || this.at().matches("bracket", "[")
+		) {
+			let operator = this.advance();
+			let property;
+			let computed;
+
+			let rightPos;
+
+			if (operator.matches("symbol", ".")) {
+				computed = false;
+				property = res.register(this.parsePrimaryExpr());
+				if (res.error) return res;
+				
+				if (property.type != "identifier") {
+					return res.failure(this.filename, [property.leftPos, property.rightPos], "Expected an identifier");
+				}
+
+				rightPos = property.rightPos;
+
+			} else {
+				computed = true;
+				property = res.register(this.parseExpr());
+				if (res.error) return res;
+
+				if (!this.at().matches("bracket", "]")) {
+					let token = this.at();
+					return res.failure(this.filename, [token.leftPos, token.rightPos], "Expected ']'");
+				}
+
+				rightPos = this.advance().rightPos;
+			}
+
+			let leftPos = object.leftPos;
+
+			object = newNode({
+				type: "member-expr",
+				object: object,
+				property: property,
+				computed: computed,
+			}).setPos(leftPos, rightPos);
+		}
+
+		return res.success(object);
 	}
 
 	// ---------------------------------------------------------------------------
