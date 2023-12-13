@@ -8,6 +8,11 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 13/12/2023
+- Changed the getting identifier in Parser.parseVariableDeclaration() from getting node to getting token
+- Added function declaration
+- Reconstructed the parse result like the runtime result
+
 // NOTE: I had to rewrite the features in another device since the power got broken and commit was unpushed :P
 // UPDATE NOTE: The power came back! And the lexerizeMultilineComment() change has been merged with the other features from the rewrite!
 // (5/12/2023) 10/12/2023 - 11/12/2023

@@ -55,6 +55,8 @@ let run = function(filename, code, flags) {
 	// Interpreter
 	if (showProcess) logProcess("creating variable table...");
 	let varTable = new VariableTable();
+
+	if (showProcess) logProcess("loading built-in variables into the variable table...");
 	loadVarTable(varTable);
 
 	if (showProcess) logProcess("interpreting...");

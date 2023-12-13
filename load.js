@@ -13,13 +13,13 @@ let runtime = rfr("frontend/interpreter/runtime.js");
 
 let loadVarTable = function(varTable) {
 	varTable.declare("log", {type: "object", properties: {
-		"write": {type: "function", call: function(args, varTable) {
+		"write": {type: "native-function", call: function(args, varTable) {
 		    let value = runtime.getValue(args[0]);
 			process.stdout.write(value);
             return {type: "undefined", value: null};
 		}},
 
-		"writeln": {type: "function", call: function(args, varTable) {
+		"writeln": {type: "native-function", call: function(args, varTable) {
 			let value = runtime.getValue(args[0]);
 			process.stdout.write(value + "\n");
             return {type: "undefined", value: null};

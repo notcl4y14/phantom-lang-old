@@ -82,6 +82,9 @@ let Interpreter = class {
 				return this.evalProgram(node, varTable);
 
 			// Statements
+			case "function-statement":
+				return this.evalFunctionStatement(node, varTable);
+
 			case "if-statement":
 				return this.evalIfStatement(node, varTable);
 
@@ -182,6 +185,38 @@ let Interpreter = class {
 	// ---------------------------------------------------------------------------
 	// Statements
 	// ---------------------------------------------------------------------------
+	evalFunctionStatement(node, varTable) {
+		let res = new RuntimeResult(this.filename);
+
+		let interpreter = this;
+
+		let name = node.name.value;
+		let params = node.params;
+		let body = node.block.body;
+
+		let call = function(args, varTable) {
+			let res = new RuntimeResult(interpreter.filename);
+			let lastEvalValue = null;
+
+			for (let node of this.body) {
+				lastEvalValue = res.register(interpreter.evalPrimary(node, varTable));
+				if (res.error) return res;
+			}
+
+			return res.success(lastEvalValue);
+		}
+
+		let func = varTable.declare(name, {
+			type: "function",
+			params: params,
+			varTable: varTable,
+			body: body,
+			call: call
+		});
+
+		return res.success(func);
+	}
+
 	evalIfStatement(node, varTable) {
 		let res = new RuntimeResult(this.filename);
 
@@ -330,17 +365,38 @@ let Interpreter = class {
 			args.push(argEval);
 		}
 
-		let func = res.register(this.evalPrimary(node.member, varTable));
+		let func = res.register(this.evalPrimary(node.caller, varTable));
 		if (res.error) return res;
 
-		if (func.type != "function") {
-			// TODO: Change position range here
-			return res.failure(`Cannot call a value type of ${func.type}`,
-				[{line: undefined, column: undefined}, {line: undefined, column: undefined}]);s
+		// native function
+		if (func.type == "native-function") {
+			let result = res.register(func.call(args, varTable)) || {type: "undefined", value: null};
+			if (res.error) return res;
+
+			return res.success(result);
+
+		// user-defined function
+		} else if (func.type == "function") {
+			let scope = new VariableTable(func.varTable);
+
+			// creating variables from the parameters
+			for (let i = 0; i < func.params.length; i += 1) {
+				let variable = func.params[i];
+				scope.declare(variable.value, args[i]);
+			}
+
+			let result = {type: "undefined", value: null};
+			for (let stmt of func.body) {
+				result = res.register(this.evalPrimary(stmt, scope));
+				if (res.error) return res;
+			}
+
+			return res.success(result);
 		}
 
-		let result = func.call(args, varTable) || {type: "undefined", value: null};
-		return res.success(result);
+		// TODO: Change position range here
+		return res.failure(`Cannot call a value type of ${func.type}`,
+			[{line: undefined, column: undefined}, {line: undefined, column: undefined}]);
 	}
 
 	evalLogicalExpr(node, varTable) {

@@ -1,5 +1,12 @@
-log.writeln("Hello World!");
-let obj = {x: 10, y: 20, obj: {lol: "lol"}};
-log.writeln(obj);
-log.writeln(obj.x);
-log.writeln(obj.obj["lol"]);
+function lol(text) {
+	log.writeln("lol");
+	log.writeln(text);
+}
+
+lol("a");
+
+function add(x, y) {
+	x + y;
+}
+
+log.writeln(add(10, 5));
