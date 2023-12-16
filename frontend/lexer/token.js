@@ -2,6 +2,62 @@ let rfr = require("rfr");
 let Colors = rfr("utils/colors.js");
 
 let Token = class {
+	static Type = {
+		// values
+		Number: "Number",
+		String: "String",
+		Identifier: "Identifier",
+		Keyword: "Keyword",
+
+		Comment: "Comment",
+
+		// operators
+		Plus: "Plus",
+		Minus: "Minus",
+		Mult: "Mult",
+		Div: "Div",
+		Mod: "Mod",
+
+		Less: "Less",
+		Greater: "Greater",
+		LessEq: "LessEq",
+		GreaterEq: "GreaterEq",
+
+		IsEqual: "IsEqual",
+		NotEqual: "NotEqual",
+
+		PlusEq: "PlusEq",
+		MinusEq: "MinusEq",
+		MultEq: "MultEq",
+		DivEq: "DivEq",
+		ModEq: "ModEq",
+
+		And: "And",
+		Or: "Or",
+		Not: "Not",
+
+		Equals: "Equals",
+
+		// closures
+		LeftParen: "LeftParen",
+		RightParen: "RightParen",
+		LeftBracket: "LeftBracket",
+		RightBracket: "RightBracket",
+		LeftBrace: "LeftBrace",
+		RightBrace: "RightBrace",
+
+		// symbols
+		Ampersand: "Ampersand",
+		Pipe: "Pipe",
+		Dot: "Dot",
+		Comma: "Comma",
+		Colon: "Colon",
+		Semicolon: "Semicolon",
+
+		// misc.
+		EOF: "EOF",
+	};
+
 	constructor(type, value) {
 		this.type = type;
 		this.value = value;

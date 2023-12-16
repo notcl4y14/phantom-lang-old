@@ -1,4 +1,4 @@
-let VariableTable = class {
+let Environment = class {
 	constructor(parent = null) {
 		this.table = {};
 		this.parent = parent;
@@ -38,4 +38,4 @@ let VariableTable = class {
 	}
 }
 
-module.exports = VariableTable;
+module.exports = Environment;

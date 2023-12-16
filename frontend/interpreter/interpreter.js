@@ -1,7 +1,7 @@
 let rfr = require("rfr");
-let Error = rfr("frontend/error.js");
-let VariableTable = rfr("frontend/interpreter/vartable.js");
+let Environment = rfr("frontend/interpreter/environment.js");
 let runtime = rfr("frontend/interpreter/runtime.js");
+let Error = rfr("frontend/error.js");
 
 let RuntimeResult = class {
 	constructor(filename = null) {
@@ -33,27 +33,27 @@ let Interpreter = class {
 
 	// ---------------------------------------------------------------------------
 
-	evalPrimary(node, varTable) {
+	eval_primary(node, env) {
 		let res = new RuntimeResult(this.filename);
 		if (!node) return res.success();
 
 		if (["number", "string", "boolean", "null", "undefined"].includes(node.type))
 			return res.success(node);
 
-		switch (node.type) {
-			case "numeric-literal":
+		switch (node.getType()) {
+			case "NumericLiteral":
 				return res.success({
 					type: "number",
 					value: node.value
 				});
 
-			case "string-literal":
+			case "StringLiteral":
 				return res.success({
 					type: "string",
 					value: node.value
 				});
 
-			case "literal":
+			case "Literal":
 				if (["true", "false"].includes(node.value))
 					return res.success({
 						type: "boolean",
@@ -62,62 +62,62 @@ let Interpreter = class {
 
 				return res.success({type: node.value, value: null});
 
-			case "identifier":
-				let variable = varTable.lookup(node.value);
+			case "Identifier":
+				let variable = env.lookup(node.value);
 				return variable
 					? res.success(variable)
-					: res.failure(`Variable '${node.value}' does not exist`, [node.leftPos, node.rightPos]);
+					: res.failure(`Variable '${node.value}' does not exist`, node.position);
 
 			// ---------------------------------------------------------------------------
 
 			// Values
-			case "array-literal":
-				return this.evalArrayLiteral(node, varTable);
+			case "ArrayLiteral":
+				return this.eval_arrayLiteral(node, env);
 
-			case "object-literal":
-				return this.evalObjectLiteral(node, varTable);
+			case "ObjectLiteral":
+				return this.eval_objectLiteral(node, env);
 
 			// Misc.
-			case "program":
-				return this.evalProgram(node, varTable);
+			case "Program":
+				return this.eval_program(node, env);
 
 			// Statements
-			case "function-statement":
-				return this.evalFunctionStatement(node, varTable);
+			case "FunctionStatement":
+				return this.eval_functionStatement(node, env);
 
-			case "if-statement":
-				return this.evalIfStatement(node, varTable);
+			case "IfStatement":
+				return this.eval_ifStatement(node, env);
 
-			case "while-statement":
-				return this.evalWhileStatement(node, varTable);
+			case "WhileStatement":
+				return this.eval_whileStatement(node, env);
 
-			case "block-statement":
-				return this.evalBlockStatement(node, varTable);
+			case "BlockStatement":
+				return this.eval_blockStatement(node, env);
 
-			case "var-declaration":
-				return this.evalVarDeclaration(node, varTable);
+			case "VarDeclaration":
+				return this.eval_varDeclaration(node, env);
 
 			// Expressions
-			case "var-assignment":
-				return this.evalVarAssignment(node, varTable);
+			case "VarAssignment":
+				return this.eval_varAssignment(node, env);
 			
-			case "member-expr":
-				return this.evalMemberExpr(node, varTable);
+			case "MemberExpr":
+				return this.eval_memberExpr(node, env);
 				
-			case "call-expr":
-				return this.evalCallExpr(node, varTable);
+			case "CallExpr":
+				return this.eval_callExpr(node, env);
 
-			case "logical-expr":
-				return this.evalLogicalExpr(node, varTable);
+			case "LogicalExpr":
+				return this.eval_logicalExpr(node, env);
 
-			case "binary-expr":
-				return this.evalBinaryExpr(node, varTable);
+			case "BinaryExpr":
+				return this.eval_binaryExpr(node, env);
 
-			case "unary-expr":
-				return this.evalUnaryExpr(node, varTable);
+			case "UnaryExpr":
+				return this.eval_unaryExpr(node, env);
 		}
 
-		return res.failure(`Node Type ${node.type} has not been setup for interpretation`, [node.leftPos, node.rightPos]);
+		return res.failure(`Node Type ${node.type} has not been setup for interpretation`, node.position);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -125,14 +125,14 @@ let Interpreter = class {
 	// ---------------------------------------------------------------------------
 	// Values
 	// ---------------------------------------------------------------------------
-	evalArrayLiteral(node, varTable) {
+	eval_arrayLiteral(node, env) {
 		let res = new RuntimeResult(this.filename);
 		let values = [];
 
 		node.values.forEach((node) => {
 
 			let value = res.register(
-				this.evalPrimary(node, varTable));
+				this.evalPrimary(node, env));
 			if (res.error) return res;
 			values.push(value);
 
@@ -142,15 +142,15 @@ let Interpreter = class {
 		return res.success({type: "array", values: values});
 	}
 
-	evalObjectLiteral(node, varTable) {
+	eval_objectLiteral(node, env) {
 		let res = new RuntimeResult(this.filename);
 		let properties = {};
 
 		node.properties.forEach((property) => {
 
 			let value = (property.value == undefined)
-				? varTable.lookup(property.key)
-				: res.register(this.evalPrimary(property.value, varTable));
+				? env.lookup(property.key)
+				: res.register(this.evalPrimary(property.value, env));
 
 			if (res.error) return res;
 			properties[property.key] = value;
@@ -168,14 +168,14 @@ let Interpreter = class {
 	// ---------------------------------------------------------------------------
 	// Misc.
 	// ---------------------------------------------------------------------------
-	evalProgram(program, varTable) {
+	eval_program(program, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let body = program.body;
 		let lastEvalValue = null;
 
 		for (let node of body) {
-			lastEvalValue = res.register(this.evalPrimary(node, varTable));
+			lastEvalValue = res.register(this.evalPrimary(node, env));
 			if (res.error) return res;
 		}
 
@@ -185,7 +185,7 @@ let Interpreter = class {
 	// ---------------------------------------------------------------------------
 	// Statements
 	// ---------------------------------------------------------------------------
-	evalFunctionStatement(node, varTable) {
+	eval_functionStatement(node, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let interpreter = this;
@@ -194,22 +194,22 @@ let Interpreter = class {
 		let params = node.params;
 		let body = node.block.body;
 
-		let call = function(args, varTable) {
+		let call = function(args, env) {
 			let res = new RuntimeResult(interpreter.filename);
 			let lastEvalValue = null;
 
 			for (let node of this.body) {
-				lastEvalValue = res.register(interpreter.evalPrimary(node, varTable));
+				lastEvalValue = res.register(interpreter.evalPrimary(node, env));
 				if (res.error) return res;
 			}
 
 			return res.success(lastEvalValue);
 		}
 
-		let func = varTable.declare(name, {
+		let func = env.declare(name, {
 			type: "function",
 			params: params,
-			varTable: varTable,
+			env: env,
 			body: body,
 			call: call
 		});
@@ -217,18 +217,18 @@ let Interpreter = class {
 		return res.success(func);
 	}
 
-	evalIfStatement(node, varTable) {
+	eval_ifStatement(node, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let block = node.block;
-		let condition = res.register(this.evalPrimary(node.condition, varTable));
+		let condition = res.register(this.evalPrimary(node.condition, env));
 		if (res.error) return res;
 
 		let isCondTrue = runtime.toBoolean(condition);
 		if (!isCondTrue) {
 
 			if (node.alternate) {
-				let lastEvalValue = res.register(this.evalPrimary(node.alternate, varTable));
+				let lastEvalValue = res.register(this.evalPrimary(node.alternate, env));
 				if (res.error) return res;
 				return res.success(lastEvalValue);
 			}
@@ -236,27 +236,27 @@ let Interpreter = class {
 			return res.success();
 		}
 
-		let lastEvalValue = res.register(this.evalPrimary(block, varTable));
+		let lastEvalValue = res.register(this.evalPrimary(block, env));
 		if (res.error) return res;
 
 		return res.success(lastEvalValue);
 	}
 
-	evalWhileStatement(node, varTable) {
+	eval_whileStatement(node, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let block = node.block;
-		let condition = res.register(this.evalPrimary(node.condition, varTable));
+		let condition = res.register(this.evalPrimary(node.condition, env));
 		if (res.error) return res;
 
 		let lastEvalValue;
 		let isCondTrue = runtime.toBoolean(condition);
 
 		while (isCondTrue) {
-			lastEvalValue = res.register(this.evalPrimary(block, varTable));
+			lastEvalValue = res.register(this.evalPrimary(block, env));
 			if (res.error) return res;
 
-			condition = res.register(this.evalPrimary(node.condition, varTable));
+			condition = res.register(this.evalPrimary(node.condition, env));
 			isCondTrue = runtime.toBoolean(condition);
 			if (!isCondTrue) break;
 		}
@@ -264,17 +264,17 @@ let Interpreter = class {
 		return res.success(lastEvalValue);
 	}
 
-	evalBlockStatement(node, varTable) {
+	eval_blockStatement(node, env) {
 		let res = new RuntimeResult(this.filename);
 		let body = node.body;
-		let _varTable = new VariableTable(varTable);
+		let _env = new Environment(env);
 
 		let lastEvalValue;
 
 		body.forEach((node) => {
 
 			lastEvalValue = res.register(
-				this.evalPrimary(node, _varTable));
+				this.evalPrimary(node, _env));
 			if (res.error) return res;
 
 		});
@@ -283,14 +283,14 @@ let Interpreter = class {
 		return res.success(lastEvalValue);
 	}
 
-	evalVarDeclaration(node, varTable) {
+	eval_varDeclaration(node, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let name = node.name.value;
-		let value = res.register(this.evalPrimary(node.value, varTable));
+		let value = res.register(this.evalPrimary(node.value, env));
 		if (res.error) return res;
 
-		let variable = varTable.declare(name, value);
+		let variable = env.declare(name, value);
 		if (!variable) return res.failure(`Variable '${name}' cannot be redeclared`,
 			[node.name.leftPos, node.name.rightPos]);
 
@@ -300,16 +300,16 @@ let Interpreter = class {
 	// ---------------------------------------------------------------------------
 	// Expressions
 	// ---------------------------------------------------------------------------
-	evalVarAssignment(node, varTable) {
+	eval_varAssignment(node, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let name = node.name.value;
 		let value;
 
-		let left = varTable.lookup(name);
+		let left = env.lookup(name);
 		if (!left) return res.failure(`Variable '${name}' does not exist`, node.name.rightPos);
 
-		let right = res.register(this.evalPrimary(node.value, varTable));
+		let right = res.register(this.evalPrimary(node.value, env));
 		if (res.error) return res;
 
 		switch (node.operator) {
@@ -321,19 +321,19 @@ let Interpreter = class {
 		}
 
 		value = {type: left.type, value: value};
-		let variable = varTable.set(name, value);
+		let variable = env.set(name, value);
 		if (!variable) return res.failure(`Variable '${name}' does not exist`,
 			[node.name.leftPos, node.name.rightPos]);
 
 		return res.success(variable);
 	}
 
-	evalMemberExpr(node, varTable) {
+	eval_memberExpr(node, env) {
 		let res = new RuntimeResult(this.filename);
-		let object = res.register(this.evalPrimary(node.object, varTable));
+		let object = res.register(this.evalPrimary(node.object, env));
 		if (res.error) return res;
 		
-		// let property = res.register(this.evalPrimary(node.property, varTable));
+		// let property = res.register(this.evalPrimary(node.property, env));
 		// if (res.error) return res;
 		let property = node.property;
 		let output = null;
@@ -355,29 +355,29 @@ let Interpreter = class {
 		return res.success(output);
 	}
 
-	evalCallExpr(node, varTable) {
+	eval_callExpr(node, env) {
 		let res = new RuntimeResult(this.filename);
 
 		let args = [];
 		for (let arg of node.args) {
-			let argEval = res.register(this.evalPrimary(arg, varTable));
+			let argEval = res.register(this.evalPrimary(arg, env));
 			if (res.error) return res;
 			args.push(argEval);
 		}
 
-		let func = res.register(this.evalPrimary(node.caller, varTable));
+		let func = res.register(this.evalPrimary(node.caller, env));
 		if (res.error) return res;
 
 		// native function
 		if (func.type == "native-function") {
-			let result = res.register(func.call(args, varTable)) || {type: "undefined", value: null};
+			let result = res.register(func.call(args, env)) || {type: "undefined", value: null};
 			if (res.error) return res;
 
 			return res.success(result);
 
 		// user-defined function
 		} else if (func.type == "function") {
-			let scope = new VariableTable(func.varTable);
+			let scope = new Environment(func.env);
 
 			// creating variables from the parameters
 			for (let i = 0; i < func.params.length; i += 1) {
@@ -399,13 +399,13 @@ let Interpreter = class {
 			[{line: undefined, column: undefined}, {line: undefined, column: undefined}]);
 	}
 
-	evalLogicalExpr(node, varTable) {
+	eval_logicalExpr(node, env) {
 		let res = new RuntimeResult(this.filename);
 
-		let left = res.register(this.evalPrimary(node.left, varTable));
+		let left = res.register(this.evalPrimary(node.left, env));
 		if (res.error) return res;
 
-		let right = res.register(this.evalPrimary(node.right, varTable));
+		let right = res.register(this.evalPrimary(node.right, env));
 		if (res.error) return res;
 
 		let operator = node.operator;
@@ -428,13 +428,13 @@ let Interpreter = class {
 		return res.success({type: "boolean", value: result});
 	}
 
-	evalBinaryExpr(node, varTable) {
+	eval_binaryExpr(node, env) {
 		let res = new RuntimeResult(this.filename);
 
-		let left = res.register(this.evalPrimary(node.left, varTable));
+		let left = res.register(this.evalPrimary(node.left, env));
 		if (res.error) return res;
 
-		let right = res.register(this.evalPrimary(node.right, varTable));
+		let right = res.register(this.evalPrimary(node.right, env));
 		if (res.error) return res;
 
 		let operator = node.operator;
@@ -488,10 +488,10 @@ let Interpreter = class {
 		return res.success({type: left.type, value: result});
 	}
 
-	evalUnaryExpr(node, varTable) {
+	eval_unaryExpr(node, env) {
 		let res = new RuntimeResult(this.filename);
 
-		let argument = res.register(this.evalPrimary(node.argument, varTable));
+		let argument = res.register(this.evalPrimary(node.argument, env));
 		if (res.error) return res;
 
 		let operator = node.operator;

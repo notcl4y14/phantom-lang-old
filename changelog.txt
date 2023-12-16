@@ -8,6 +8,12 @@
 // UNDER DEVELOPMENT VERSIONS
 // -----------------------------------------------------------------
 
+// 14/12/2023 - 16/12/2023
+- Cleaned up the code (or vice versa)
+- Added Parser.check() method
+- Renamed Variable Table to Environment
+- Broke the code again
+
 // 13/12/2023
 - Changed the getting identifier in Parser.parseVariableDeclaration() from getting node to getting token
 - Added function declaration

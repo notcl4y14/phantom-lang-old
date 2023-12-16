@@ -4,7 +4,7 @@ let utils = require("util");
 let Lexer = rfr("frontend/lexer/lexer.js");
 let Parser = rfr("frontend/parser/parser.js");
 let Interpreter = rfr("frontend/interpreter/interpreter.js");
-let VariableTable = rfr("frontend/interpreter/vartable.js");
+let Environment = rfr("frontend/interpreter/environment.js");
 
 let loadVarTable = rfr("load.js");
 
@@ -54,7 +54,7 @@ let run = function(filename, code, flags) {
 
 	// Interpreter
 	if (showProcess) logProcess("creating variable table...");
-	let varTable = new VariableTable();
+	let varTable = new Environment();
 
 	if (showProcess) logProcess("loading built-in variables into the variable table...");
 	loadVarTable(varTable);
