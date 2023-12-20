@@ -1,5 +1,7 @@
 # phantom-lang
 
+Archived
+
 # TODO
 - Make the ability to reuse additive and multiplicative expr like (10 + 4 - 10 + 5)
 	+ Right now it's possible to do that via parenthesised expressions like (10 - 5) + 10
